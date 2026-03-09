@@ -17,6 +17,10 @@ coverage.*
 *.coverprofile
 profile.cov
 
+# Output
+/bin/
+/tmp/
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
@@ -24,9 +28,13 @@ profile.cov
 go.work
 go.work.sum
 
+# OS
+.DS_Store
+Thumbs.db
+
 # env file
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+.idea/
+.vscode/
