@@ -20,6 +20,19 @@ func TestNewRouter_ExposesHealthAtAPIV1Path(t *testing.T) {
 	}
 }
 
+func TestNewRouter_ExposesBuildingsAtAPIV1Path(t *testing.T) {
+	r := NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/buildings", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected /api/v1/buildings to return %d, got %d", http.StatusOK, w.Code)
+	}
+}
+
 func TestNewRouter_HealthResponseMatchesContract(t *testing.T) {
 	r := NewRouter()
 
