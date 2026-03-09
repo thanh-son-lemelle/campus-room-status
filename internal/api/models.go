@@ -57,6 +57,13 @@ type RoomScheduleResponse struct {
 	Events   []EventResponse `json:"events"`
 }
 
+type RoomsListResponse struct {
+	Timestamp time.Time      `json:"timestamp"`
+	Filters   map[string]any `json:"filters"`
+	Count     int            `json:"count"`
+	Rooms     []RoomResponse `json:"rooms"`
+}
+
 type HealthResponse struct {
 	Status                     string     `json:"status"`
 	Version                    string     `json:"version"`
@@ -72,6 +79,9 @@ type RoomsQuery struct {
 	Type        *string `form:"type"`
 	Status      *string `form:"status"`
 	CapacityMin *int    `form:"capacity_min"`
+	CapacityMax *int    `form:"capacity_max"`
+	Sort        *string `form:"sort"`
+	Order       *string `form:"order"`
 }
 
 type ErrorResponse struct {

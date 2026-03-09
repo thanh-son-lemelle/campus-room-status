@@ -15,6 +15,7 @@ func NewRouter() *gin.Engine {
 	api := r.Group("/api/v1")
 	api.GET("/buildings", buildings.Handler)
 	api.GET("/health", health.Handler)
+	api.GET("/rooms", rooms.ListHandler)
 	api.GET("/rooms/:code", rooms.DetailHandler)
 	api.GET("/rooms/:code/schedule", rooms.ScheduleHandler)
 
