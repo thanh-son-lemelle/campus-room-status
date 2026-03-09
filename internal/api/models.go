@@ -9,6 +9,11 @@ type BuildingResponse struct {
 	Floors  []int  `json:"floors"`
 }
 
+type BuildingsResponse struct {
+	Timestamp time.Time          `json:"timestamp"`
+	Buildings []BuildingResponse `json:"buildings"`
+}
+
 type EventResponse struct {
 	Title     string    `json:"title"`
 	Start     time.Time `json:"start"`
