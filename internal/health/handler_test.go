@@ -60,3 +60,51 @@ func TestHealthHandler_ReturnsExpectedContractFields(t *testing.T) {
 		}
 	}
 }
+
+func TestHealthHandler_ReturnsExpectedContractTypes(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/health", Handler)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON body, got error: %v", err)
+	}
+
+	if _, ok := payload["status"].(string); !ok {
+		t.Fatalf("expected status to be a string, got %T", payload["status"])
+	}
+
+	if _, ok := payload["version"].(string); !ok {
+		t.Fatalf("expected version to be a string, got %T", payload["version"])
+	}
+
+	if _, ok := payload["google_admin_api_connected"].(bool); !ok {
+		t.Fatalf("expected google_admin_api_connected to be a boolean, got %T", payload["google_admin_api_connected"])
+	}
+
+	if _, ok := payload["google_calendar_api_connected"].(bool); !ok {
+		t.Fatalf("expected google_calendar_api_connected to be a boolean, got %T", payload["google_calendar_api_connected"])
+	}
+
+	lastSync := payload["last_sync"]
+	if lastSync != nil {
+		if _, ok := lastSync.(string); !ok {
+			t.Fatalf("expected last_sync to be null or string, got %T", lastSync)
+		}
+	}
+
+	if _, ok := payload["response_time_ms"].(float64); !ok {
+		t.Fatalf("expected response_time_ms to be a number, got %T", payload["response_time_ms"])
+	}
+}
