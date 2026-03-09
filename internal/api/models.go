@@ -1,0 +1,56 @@
+package api
+
+import "time"
+
+type BuildingResponse struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Address string `json:"address"`
+	Floors  []int  `json:"floors"`
+}
+
+type EventResponse struct {
+	Title     string    `json:"title"`
+	Start     time.Time `json:"start"`
+	End       time.Time `json:"end"`
+	Organizer string    `json:"organizer"`
+}
+
+type RoomResponse struct {
+	Code         string         `json:"code"`
+	Name         string         `json:"name"`
+	Building     string         `json:"building"`
+	Floor        int            `json:"floor"`
+	Capacity     int            `json:"capacity"`
+	Type         string         `json:"type"`
+	Status       string         `json:"status"`
+	CurrentEvent *EventResponse `json:"current_event"`
+	NextEvent    *EventResponse `json:"next_event"`
+}
+
+type HealthResponse struct {
+	Status                     string     `json:"status"`
+	Version                    string     `json:"version"`
+	GoogleAdminAPIConnected    bool       `json:"google_admin_api_connected"`
+	GoogleCalendarAPIConnected bool       `json:"google_calendar_api_connected"`
+	LastSync                   *time.Time `json:"last_sync"`
+	ResponseTimeMS             int64      `json:"response_time_ms"`
+}
+
+type RoomsQuery struct {
+	Building    *string `form:"building"`
+	Floor       *int    `form:"floor"`
+	Type        *string `form:"type"`
+	Status      *string `form:"status"`
+	CapacityMin *int    `form:"capacity_min"`
+}
+
+type ErrorResponse struct {
+	Code      string    `json:"code"`
+	Message   string    `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type ErrorEnvelope struct {
+	Error ErrorResponse `json:"error"`
+}

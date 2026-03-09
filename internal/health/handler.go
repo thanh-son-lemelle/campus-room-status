@@ -2,12 +2,21 @@ package health
 
 import (
 	"net/http"
+	"time"
 
+	"campus-room-status/internal/api"
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.Engine) {
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+func Handler(c *gin.Context) {
+	start := time.Now()
+
+	c.JSON(http.StatusOK, api.HealthResponse{
+		Status:                     "ok",
+		Version:                    "dev",
+		GoogleAdminAPIConnected:    false,
+		GoogleCalendarAPIConnected: false,
+		LastSync:                   nil,
+		ResponseTimeMS:             time.Since(start).Milliseconds(),
 	})
 }
