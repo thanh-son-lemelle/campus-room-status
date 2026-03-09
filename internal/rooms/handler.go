@@ -2,6 +2,8 @@ package rooms
 
 import (
 	"net/http"
+	"sort"
+	"strconv"
 	"time"
 
 	"campus-room-status/internal/api"
@@ -28,6 +30,119 @@ var nextEventFixture = &api.EventResponse{
 	Start:     time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC),
 	End:       time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC),
 	Organizer: "Academic Board",
+}
+
+var currentEventFixture = &api.EventResponse{
+	Title:     "OS Lab Session",
+	Start:     time.Date(2026, time.March, 9, 10, 0, 0, 0, time.UTC),
+	End:       time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC),
+	Organizer: "Systems Team",
+}
+
+var roomsFixture = []api.RoomResponse{
+	{
+		Code:         "AMPHI-A",
+		Name:         "Amphitheater A",
+		Building:     "B1",
+		Floor:        1,
+		Capacity:     180,
+		Type:         "amphitheater",
+		Status:       "available",
+		CurrentEvent: nil,
+		NextEvent:    nextEventFixture,
+	},
+	{
+		Code:         "LAB-204",
+		Name:         "Computer Lab 204",
+		Building:     "B2",
+		Floor:        2,
+		Capacity:     30,
+		Type:         "lab",
+		Status:       "occupied",
+		CurrentEvent: currentEventFixture,
+		NextEvent:    nil,
+	},
+}
+
+func ListHandler(c *gin.Context) {
+	filters := make(map[string]any)
+
+	building := c.Query("building")
+	if building != "" {
+		filters["building"] = building
+	}
+
+	roomType := c.Query("type")
+	if roomType != "" {
+		filters["type"] = roomType
+	}
+
+	status := c.Query("status")
+	if status != "" {
+		filters["status"] = status
+	}
+
+	var capacityMin *int
+	if raw := c.Query("capacity_min"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil {
+			capacityMin = &parsed
+			filters["capacity_min"] = parsed
+		}
+	}
+
+	var capacityMax *int
+	if raw := c.Query("capacity_max"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil {
+			capacityMax = &parsed
+			filters["capacity_max"] = parsed
+		}
+	}
+
+	sortField := c.Query("sort")
+	if sortField != "" {
+		filters["sort"] = sortField
+	}
+
+	order := c.Query("order")
+	if order != "" {
+		filters["order"] = order
+	}
+
+	filteredRooms := make([]api.RoomResponse, 0, len(roomsFixture))
+	for _, room := range roomsFixture {
+		if building != "" && room.Building != building {
+			continue
+		}
+		if roomType != "" && room.Type != roomType {
+			continue
+		}
+		if status != "" && room.Status != status {
+			continue
+		}
+		if capacityMin != nil && room.Capacity < *capacityMin {
+			continue
+		}
+		if capacityMax != nil && room.Capacity > *capacityMax {
+			continue
+		}
+		filteredRooms = append(filteredRooms, room)
+	}
+
+	if sortField == "capacity" {
+		sort.Slice(filteredRooms, func(i, j int) bool {
+			if order == "desc" {
+				return filteredRooms[i].Capacity > filteredRooms[j].Capacity
+			}
+			return filteredRooms[i].Capacity < filteredRooms[j].Capacity
+		})
+	}
+
+	c.JSON(http.StatusOK, api.RoomsListResponse{
+		Timestamp: time.Now().UTC(),
+		Filters:   filters,
+		Count:     len(filteredRooms),
+		Rooms:     filteredRooms,
+	})
 }
 
 func DetailHandler(c *gin.Context) {
