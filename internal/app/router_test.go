@@ -33,6 +33,36 @@ func TestNewRouter_ExposesBuildingsAtAPIV1Path(t *testing.T) {
 	}
 }
 
+func TestNewRouter_ExposesRoomDetailAtAPIV1Path(t *testing.T) {
+	r := NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/rooms/AMPHI-A", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected /api/v1/rooms/AMPHI-A to return %d, got %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestNewRouter_ExposesRoomScheduleAtAPIV1Path(t *testing.T) {
+	r := NewRouter()
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/rooms/AMPHI-A/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		nil,
+	)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected /api/v1/rooms/AMPHI-A/schedule to return %d, got %d", http.StatusOK, w.Code)
+	}
+}
+
 func TestNewRouter_HealthResponseMatchesContract(t *testing.T) {
 	r := NewRouter()
 
