@@ -33,6 +33,30 @@ type RoomResponse struct {
 	NextEvent    *EventResponse `json:"next_event"`
 }
 
+type RoomDetailResponse struct {
+	Code          string          `json:"code"`
+	Name          string          `json:"name"`
+	Building      string          `json:"building"`
+	Floor         int             `json:"floor"`
+	Capacity      int             `json:"capacity"`
+	Type          string          `json:"type"`
+	Status        string          `json:"status"`
+	CurrentEvent  *EventResponse  `json:"current_event"`
+	NextEvent     *EventResponse  `json:"next_event"`
+	ScheduleToday []EventResponse `json:"schedule_today"`
+}
+
+type PeriodResponse struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+}
+
+type RoomScheduleResponse struct {
+	RoomCode string          `json:"room_code"`
+	Period   PeriodResponse  `json:"period"`
+	Events   []EventResponse `json:"events"`
+}
+
 type HealthResponse struct {
 	Status                     string     `json:"status"`
 	Version                    string     `json:"version"`
