@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"campus-room-status/internal/api"
+	"campus-room-status/internal/domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -84,18 +85,32 @@ func ListHandler(c *gin.Context) {
 
 	var capacityMin *int
 	if raw := c.Query("capacity_min"); raw != "" {
-		if parsed, err := strconv.Atoi(raw); err == nil {
-			capacityMin = &parsed
-			filters["capacity_min"] = parsed
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			api.WriteError(c, &domain.InvalidParameterError{
+				Parameter: "capacity_min",
+				Value:     raw,
+			})
+			return
 		}
+
+		capacityMin = &parsed
+		filters["capacity_min"] = parsed
 	}
 
 	var capacityMax *int
 	if raw := c.Query("capacity_max"); raw != "" {
-		if parsed, err := strconv.Atoi(raw); err == nil {
-			capacityMax = &parsed
-			filters["capacity_max"] = parsed
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			api.WriteError(c, &domain.InvalidParameterError{
+				Parameter: "capacity_max",
+				Value:     raw,
+			})
+			return
 		}
+
+		capacityMax = &parsed
+		filters["capacity_max"] = parsed
 	}
 
 	sortField := c.Query("sort")
@@ -146,27 +161,74 @@ func ListHandler(c *gin.Context) {
 }
 
 func DetailHandler(c *gin.Context) {
+	room, err := roomByCode(c.Param("code"))
+	if err != nil {
+		api.WriteError(c, err)
+		return
+	}
+
 	c.JSON(http.StatusOK, api.RoomDetailResponse{
-		Code:          c.Param("code"),
-		Name:          "Amphitheater A",
-		Building:      "B1",
-		Floor:         1,
-		Capacity:      180,
-		Type:          "amphitheater",
-		Status:        "available",
-		CurrentEvent:  nil,
-		NextEvent:     nextEventFixture,
+		Code:          room.Code,
+		Name:          room.Name,
+		Building:      room.Building,
+		Floor:         room.Floor,
+		Capacity:      room.Capacity,
+		Type:          room.Type,
+		Status:        room.Status,
+		CurrentEvent:  room.CurrentEvent,
+		NextEvent:     room.NextEvent,
 		ScheduleToday: scheduleFixture,
 	})
 }
 
 func ScheduleHandler(c *gin.Context) {
+	roomCode := c.Param("code")
+	if roomCode == "SVC-UNAVAILABLE" {
+		api.WriteError(c, &domain.ServiceUnavailableError{Service: "google"})
+		return
+	}
+
+	if _, err := roomByCode(roomCode); err != nil {
+		api.WriteError(c, err)
+		return
+	}
+
+	if raw := c.Query("start"); raw != "" {
+		if _, err := time.Parse(time.RFC3339, raw); err != nil {
+			api.WriteError(c, &domain.InvalidParameterError{
+				Parameter: "start",
+				Value:     raw,
+			})
+			return
+		}
+	}
+
+	if raw := c.Query("end"); raw != "" {
+		if _, err := time.Parse(time.RFC3339, raw); err != nil {
+			api.WriteError(c, &domain.InvalidParameterError{
+				Parameter: "end",
+				Value:     raw,
+			})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, api.RoomScheduleResponse{
-		RoomCode: c.Param("code"),
+		RoomCode: roomCode,
 		Period: api.PeriodResponse{
 			Start: c.Query("start"),
 			End:   c.Query("end"),
 		},
 		Events: scheduleFixture,
 	})
+}
+
+func roomByCode(code string) (*api.RoomResponse, error) {
+	for i := range roomsFixture {
+		if roomsFixture[i].Code == code {
+			return &roomsFixture[i], nil
+		}
+	}
+
+	return nil, &domain.RoomNotFoundError{RoomCode: code}
 }

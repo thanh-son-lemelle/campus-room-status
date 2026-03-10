@@ -16,6 +16,17 @@ type Event struct {
 	Organizer string
 }
 
+// DirectoryRoom is a provider-agnostic room snapshot coming from an external directory.
+// It intentionally mirrors common fields (resourceName/resourceEmail/capacity/category)
+// without importing any provider-specific SDK type.
+type DirectoryRoom struct {
+	ResourceName     string
+	ResourceEmail    string
+	Capacity         int
+	ResourceType     string
+	ResourceCategory string
+}
+
 type Room struct {
 	Code         string
 	Name         string
@@ -34,6 +45,9 @@ type RoomFilters struct {
 	Type        *string
 	Status      *string
 	CapacityMin *int
+	CapacityMax *int
+	Sort        *string
+	Order       *string
 }
 
 type HealthStatus struct {
@@ -43,4 +57,10 @@ type HealthStatus struct {
 	GoogleCalendarAPIConnected bool
 	LastSync                   *time.Time
 	ResponseTimeMS             int64
+}
+
+type APIError struct {
+	Code      string
+	Message   string
+	Timestamp time.Time
 }
