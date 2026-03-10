@@ -45,7 +45,7 @@ func NewInventoryCache(ctx context.Context, source InventorySource, ttl time.Dur
 		return nil, errors.New("ttl must be greater than zero")
 	}
 	if clock == nil {
-		clock = systemClock{}
+		clock = cacheSystemClock{}
 	}
 
 	cache := &InventoryCache{
@@ -160,8 +160,8 @@ func cloneSnapshot(src InventorySnapshot) InventorySnapshot {
 	return out
 }
 
-type systemClock struct{}
+type cacheSystemClock struct{}
 
-func (systemClock) Now() time.Time {
+func (cacheSystemClock) Now() time.Time {
 	return time.Now().UTC()
 }
