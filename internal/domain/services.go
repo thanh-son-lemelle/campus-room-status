@@ -18,11 +18,11 @@ type AdminDirectoryClient interface {
 }
 
 type CalendarClient interface {
-	ListRoomEvents(ctx context.Context, roomCode string, start time.Time, end time.Time) ([]Event, error)
+	ListRoomEvents(ctx context.Context, resourceEmail string, start time.Time, end time.Time) ([]Event, error)
 }
 
 type StatusInterpreter interface {
-	Resolve(room Room) string
+	Resolve(ctx context.Context, room DirectoryRoom, events []Event) string
 }
 
 type Clock interface {

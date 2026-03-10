@@ -125,7 +125,7 @@ func TestDomainContract_Interfaces(t *testing.T) {
 		pkg,
 		"StatusInterpreter",
 		"Resolve",
-		[]string{"Room", "string"},
+		[]string{"context.Context", "DirectoryRoom", "[]Event", "string"},
 	)
 
 	requireInterfaceMethodContains(
