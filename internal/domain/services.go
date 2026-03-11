@@ -11,6 +11,10 @@ type RoomService interface {
 	ListRooms(ctx context.Context, filters RoomFilters) ([]Room, error)
 }
 
+type BuildingService interface {
+	ListBuildings(ctx context.Context) ([]Building, error)
+}
+
 type HealthService interface {
 	GetHealth(ctx context.Context) (HealthStatus, error)
 }
