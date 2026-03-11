@@ -69,6 +69,7 @@ var roomsFixture = []api.RoomResponse{
 var defaultRoomService = newDefaultListService()
 var defaultListHandler = NewListHandler(defaultRoomService, nil)
 var defaultDetailHandler = NewDetailHandler(defaultRoomService)
+var defaultScheduleHandler = NewScheduleHandler(defaultRoomService)
 
 func ListHandler(c *gin.Context) {
 	defaultListHandler(c)
@@ -199,44 +200,107 @@ func (h *detailHandler) handle(c *gin.Context) {
 }
 
 func ScheduleHandler(c *gin.Context) {
-	roomCode := c.Param("code")
-	if roomCode == "SVC-UNAVAILABLE" {
+	defaultScheduleHandler(c)
+}
+
+func NewScheduleHandler(service domain.RoomService) gin.HandlerFunc {
+	h := &scheduleHandler{
+		service: service,
+	}
+
+	return h.handle
+}
+
+type scheduleHandler struct {
+	service domain.RoomService
+}
+
+func (h *scheduleHandler) handle(c *gin.Context) {
+	if h.service == nil {
+		api.WriteError(c, api.NewHTTPError(
+			http.StatusInternalServerError,
+			api.ErrorCodeInternalServerError,
+			"Room service is not configured",
+		))
+		return
+	}
+
+	if c.Param("code") == "SVC-UNAVAILABLE" {
 		api.WriteError(c, &domain.ServiceUnavailableError{Service: "google"})
 		return
 	}
 
-	if _, err := roomByCode(roomCode); err != nil {
-		api.WriteError(c, err)
+	startRaw := c.Query("start")
+	if startRaw == "" {
+		api.WriteError(c, &domain.InvalidParameterError{
+			Parameter: "start",
+		})
 		return
 	}
 
-	if raw := c.Query("start"); raw != "" {
-		if _, err := time.Parse(time.RFC3339, raw); err != nil {
-			api.WriteError(c, &domain.InvalidParameterError{
-				Parameter: "start",
-				Value:     raw,
-			})
-			return
-		}
+	endRaw := c.Query("end")
+	if endRaw == "" {
+		api.WriteError(c, &domain.InvalidParameterError{
+			Parameter: "end",
+		})
+		return
 	}
 
-	if raw := c.Query("end"); raw != "" {
-		if _, err := time.Parse(time.RFC3339, raw); err != nil {
-			api.WriteError(c, &domain.InvalidParameterError{
-				Parameter: "end",
-				Value:     raw,
-			})
-			return
+	start, err := time.Parse(time.RFC3339, startRaw)
+	if err != nil {
+		api.WriteError(c, &domain.InvalidParameterError{
+			Parameter: "start",
+			Value:     startRaw,
+		})
+		return
+	}
+
+	end, err := time.Parse(time.RFC3339, endRaw)
+	if err != nil {
+		api.WriteError(c, &domain.InvalidParameterError{
+			Parameter: "end",
+			Value:     endRaw,
+		})
+		return
+	}
+
+	if start.After(end) {
+		api.WriteError(c, &domain.InvalidParameterError{
+			Parameter: "start",
+			Value:     startRaw,
+		})
+		return
+	}
+
+	events, err := h.service.GetRoomSchedule(c.Request.Context(), c.Param("code"), start, end)
+	if err != nil {
+		var invalidParamErr *domain.InvalidParameterError
+		var roomNotFoundErr *domain.RoomNotFoundError
+		var serviceUnavailableErr *domain.ServiceUnavailableError
+		switch {
+		case errors.As(err, &invalidParamErr):
+			api.WriteError(c, err)
+		case errors.As(err, &roomNotFoundErr):
+			api.WriteError(c, err)
+		case errors.As(err, &serviceUnavailableErr):
+			api.WriteError(c, err)
+		default:
+			api.WriteError(c, api.NewHTTPError(
+				http.StatusInternalServerError,
+				api.ErrorCodeInternalServerError,
+				"Une erreur interne est survenue",
+			))
 		}
+		return
 	}
 
 	c.JSON(http.StatusOK, api.RoomScheduleResponse{
-		RoomCode: roomCode,
+		RoomCode: c.Param("code"),
 		Period: api.PeriodResponse{
-			Start: c.Query("start"),
-			End:   c.Query("end"),
+			Start: startRaw,
+			End:   endRaw,
 		},
-		Events: scheduleFixture,
+		Events: mapDomainEventsToAPIEvents(events),
 	})
 }
 
