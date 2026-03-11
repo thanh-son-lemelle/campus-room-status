@@ -107,16 +107,9 @@ func (s *service) GetRoomDetail(ctx context.Context, code string) (domain.Room, 
 		return domain.Room{}, nil, err
 	}
 
-	var found *domain.Room
-	for i := range snapshot.Rooms {
-		if snapshot.Rooms[i].Code == code {
-			room := cloneDomainRoom(snapshot.Rooms[i])
-			found = &room
-			break
-		}
-	}
-	if found == nil {
-		return domain.Room{}, nil, &domain.RoomNotFoundError{RoomCode: code}
+	found, err := findRoomByCode(snapshot.Rooms, code)
+	if err != nil {
+		return domain.Room{}, nil, err
 	}
 
 	now := s.clock.Now()
@@ -145,6 +138,36 @@ func (s *service) GetRoomDetail(ctx context.Context, code string) (domain.Room, 
 	)
 
 	return enriched, scheduleToday, nil
+}
+
+func (s *service) GetRoomSchedule(ctx context.Context, code string, start time.Time, end time.Time) ([]domain.Event, error) {
+	if s.inventory == nil {
+		return nil, errors.New("inventory cache is required")
+	}
+	if s.events == nil {
+		return nil, errors.New("room events cache is required")
+	}
+
+	snapshot, err := s.inventory.GetInventory(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	room, err := findRoomByCode(snapshot.Rooms, code)
+	if err != nil {
+		return nil, err
+	}
+
+	events, err := s.events.Get(ctx, domain.RoomEventsKey{
+		RoomEmail: roomEventLookupKey(*room),
+		Start:     start,
+		End:       end,
+	})
+	if err != nil {
+		return nil, &domain.ServiceUnavailableError{Service: "google"}
+	}
+
+	return sortEventsByStart(filterEventsInPeriod(events, start, end)), nil
 }
 
 func roomEventLookupKey(room domain.Room) string {
@@ -216,6 +239,27 @@ func cloneEvents(events []domain.Event) []domain.Event {
 	cloned := make([]domain.Event, len(events))
 	copy(cloned, events)
 	return cloned
+}
+
+func findRoomByCode(rooms []domain.Room, code string) (*domain.Room, error) {
+	for i := range rooms {
+		if rooms[i].Code == code {
+			room := cloneDomainRoom(rooms[i])
+			return &room, nil
+		}
+	}
+
+	return nil, &domain.RoomNotFoundError{RoomCode: code}
+}
+
+func filterEventsInPeriod(events []domain.Event, start time.Time, end time.Time) []domain.Event {
+	filtered := make([]domain.Event, 0, len(events))
+	for _, event := range events {
+		if event.End.After(start) && event.Start.Before(end) {
+			filtered = append(filtered, event)
+		}
+	}
+	return filtered
 }
 
 type serviceClock struct{}

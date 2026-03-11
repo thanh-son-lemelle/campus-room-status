@@ -258,6 +258,62 @@ func TestService_GetRoomDetail_MaintenanceOnlyWhenReliableDataExists(t *testing.
 	}
 }
 
+func TestService_GetRoomSchedule_ReturnsEventsSortedByStartDate(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
+	clock := roomServiceTestClock{now: now}
+
+	inventory := fakeInventoryReader{
+		snapshot: domain.InventorySnapshot{
+			Rooms: []domain.Room{
+				{Code: "AMPHI-A", Name: "Amphitheater A", Building: "B1", Capacity: 180, Type: "amphitheater"},
+			},
+		},
+	}
+
+	eventsReader := mapRoomEventsReader{
+		eventsByRoom: map[string][]domain.Event{
+			"AMPHI-A": {
+				{Title: "Third", Start: now.Add(4 * time.Hour), End: now.Add(5 * time.Hour)},
+				{Title: "First", Start: now.Add(time.Hour), End: now.Add(2 * time.Hour)},
+				{Title: "Second", Start: now.Add(2 * time.Hour), End: now.Add(3 * time.Hour)},
+			},
+		},
+	}
+
+	interpreter := domain.NewStatusInterpreter(clock, nil)
+	svc := NewService(inventory, eventsReader, interpreter, clock)
+
+	events, err := svc.GetRoomSchedule(context.Background(), "AMPHI-A", now, now.Add(8*time.Hour))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(events) != 3 {
+		t.Fatalf("expected 3 schedule events, got %d", len(events))
+	}
+	if events[0].Title != "First" || events[1].Title != "Second" || events[2].Title != "Third" {
+		t.Fatalf("expected sorted schedule First->Second->Third, got %+v", events)
+	}
+}
+
+func TestService_GetRoomSchedule_ReturnsRoomNotFoundForUnknownCode(t *testing.T) {
+	svc := newTestRoomService(t, false)
+
+	_, err := svc.GetRoomSchedule(
+		context.Background(),
+		"UNKNOWN-ROOM",
+		time.Date(2026, time.March, 10, 8, 0, 0, 0, time.UTC),
+		time.Date(2026, time.March, 10, 18, 0, 0, 0, time.UTC),
+	)
+	if err == nil {
+		t.Fatalf("expected room not found error")
+	}
+
+	if _, ok := err.(*domain.RoomNotFoundError); !ok {
+		t.Fatalf("expected RoomNotFoundError, got %T", err)
+	}
+}
+
 type roomServiceTestClock struct {
 	now time.Time
 }

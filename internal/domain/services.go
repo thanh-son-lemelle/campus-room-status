@@ -10,6 +10,7 @@ import (
 type RoomService interface {
 	ListRooms(ctx context.Context, filters RoomFilters) ([]Room, error)
 	GetRoomDetail(ctx context.Context, code string) (Room, []Event, error)
+	GetRoomSchedule(ctx context.Context, code string, start time.Time, end time.Time) ([]Event, error)
 }
 
 type BuildingService interface {
