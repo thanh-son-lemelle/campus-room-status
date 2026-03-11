@@ -2,7 +2,6 @@ package rooms
 
 import (
 	"net/http"
-	"sort"
 	"strconv"
 	"time"
 
@@ -66,24 +65,24 @@ var roomsFixture = []api.RoomResponse{
 }
 
 func ListHandler(c *gin.Context) {
-	filters := make(map[string]any)
+	responseFilters := make(map[string]any)
+	queryFilters := domain.RoomFilters{}
 
-	building := c.Query("building")
-	if building != "" {
-		filters["building"] = building
+	if building := c.Query("building"); building != "" {
+		queryFilters.Building = &building
+		responseFilters["building"] = building
 	}
 
-	roomType := c.Query("type")
-	if roomType != "" {
-		filters["type"] = roomType
+	if roomType := c.Query("type"); roomType != "" {
+		queryFilters.Type = &roomType
+		responseFilters["type"] = roomType
 	}
 
-	status := c.Query("status")
-	if status != "" {
-		filters["status"] = status
+	if status := c.Query("status"); status != "" {
+		queryFilters.Status = &status
+		responseFilters["status"] = status
 	}
 
-	var capacityMin *int
 	if raw := c.Query("capacity_min"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil {
@@ -94,11 +93,10 @@ func ListHandler(c *gin.Context) {
 			return
 		}
 
-		capacityMin = &parsed
-		filters["capacity_min"] = parsed
+		queryFilters.CapacityMin = &parsed
+		responseFilters["capacity_min"] = parsed
 	}
 
-	var capacityMax *int
 	if raw := c.Query("capacity_max"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil {
@@ -109,52 +107,39 @@ func ListHandler(c *gin.Context) {
 			return
 		}
 
-		capacityMax = &parsed
-		filters["capacity_max"] = parsed
+		queryFilters.CapacityMax = &parsed
+		responseFilters["capacity_max"] = parsed
 	}
 
-	sortField := c.Query("sort")
-	if sortField != "" {
-		filters["sort"] = sortField
+	if sortField := c.Query("sort"); sortField != "" {
+		queryFilters.Sort = &sortField
+		responseFilters["sort"] = sortField
 	}
 
-	order := c.Query("order")
-	if order != "" {
-		filters["order"] = order
+	if order := c.Query("order"); order != "" {
+		queryFilters.Order = &order
+		responseFilters["order"] = order
 	}
 
-	filteredRooms := make([]api.RoomResponse, 0, len(roomsFixture))
-	for _, room := range roomsFixture {
-		if building != "" && room.Building != building {
-			continue
-		}
-		if roomType != "" && room.Type != roomType {
-			continue
-		}
-		if status != "" && room.Status != status {
-			continue
-		}
-		if capacityMin != nil && room.Capacity < *capacityMin {
-			continue
-		}
-		if capacityMax != nil && room.Capacity > *capacityMax {
-			continue
-		}
-		filteredRooms = append(filteredRooms, room)
+	rooms := make([]domain.Room, len(roomsFixture))
+	for i := range roomsFixture {
+		rooms[i] = apiRoomToDomainRoom(roomsFixture[i])
 	}
 
-	if sortField == "capacity" {
-		sort.Slice(filteredRooms, func(i, j int) bool {
-			if order == "desc" {
-				return filteredRooms[i].Capacity > filteredRooms[j].Capacity
-			}
-			return filteredRooms[i].Capacity < filteredRooms[j].Capacity
-		})
+	filteredDomainRooms, err := domain.FilterAndSortRooms(rooms, queryFilters)
+	if err != nil {
+		api.WriteError(c, err)
+		return
+	}
+
+	filteredRooms := make([]api.RoomResponse, len(filteredDomainRooms))
+	for i := range filteredDomainRooms {
+		filteredRooms[i] = domainRoomToAPIRoom(filteredDomainRooms[i])
 	}
 
 	c.JSON(http.StatusOK, api.RoomsListResponse{
 		Timestamp: time.Now().UTC(),
-		Filters:   filters,
+		Filters:   responseFilters,
 		Count:     len(filteredRooms),
 		Rooms:     filteredRooms,
 	})
@@ -231,4 +216,58 @@ func roomByCode(code string) (*api.RoomResponse, error) {
 	}
 
 	return nil, &domain.RoomNotFoundError{RoomCode: code}
+}
+
+func apiRoomToDomainRoom(room api.RoomResponse) domain.Room {
+	return domain.Room{
+		Code:         room.Code,
+		Name:         room.Name,
+		Building:     room.Building,
+		Floor:        room.Floor,
+		Capacity:     room.Capacity,
+		Type:         room.Type,
+		Status:       room.Status,
+		CurrentEvent: apiEventToDomainEvent(room.CurrentEvent),
+		NextEvent:    apiEventToDomainEvent(room.NextEvent),
+	}
+}
+
+func domainRoomToAPIRoom(room domain.Room) api.RoomResponse {
+	return api.RoomResponse{
+		Code:         room.Code,
+		Name:         room.Name,
+		Building:     room.Building,
+		Floor:        room.Floor,
+		Capacity:     room.Capacity,
+		Type:         room.Type,
+		Status:       room.Status,
+		CurrentEvent: domainEventToAPIEvent(room.CurrentEvent),
+		NextEvent:    domainEventToAPIEvent(room.NextEvent),
+	}
+}
+
+func apiEventToDomainEvent(event *api.EventResponse) *domain.Event {
+	if event == nil {
+		return nil
+	}
+
+	return &domain.Event{
+		Title:     event.Title,
+		Start:     event.Start,
+		End:       event.End,
+		Organizer: event.Organizer,
+	}
+}
+
+func domainEventToAPIEvent(event *domain.Event) *api.EventResponse {
+	if event == nil {
+		return nil
+	}
+
+	return &api.EventResponse{
+		Title:     event.Title,
+		Start:     event.Start,
+		End:       event.End,
+		Organizer: event.Organizer,
+	}
 }

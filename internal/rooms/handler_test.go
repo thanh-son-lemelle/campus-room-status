@@ -193,6 +193,147 @@ func TestListHandler_AcceptsOptionalFilters(t *testing.T) {
 	}
 }
 
+func TestListHandler_FiltersByBuilding(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms", ListHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms?building=B1", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON body, got error: %v", err)
+	}
+
+	rooms, ok := payload["rooms"].([]any)
+	if !ok {
+		t.Fatalf("expected rooms to be an array, got %T", payload["rooms"])
+	}
+	if len(rooms) != 1 {
+		t.Fatalf("expected one room for building B1, got %d", len(rooms))
+	}
+
+	room, ok := rooms[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected room object, got %T", rooms[0])
+	}
+	if room["building"] != "B1" {
+		t.Fatalf("expected building B1, got %v", room["building"])
+	}
+}
+
+func TestListHandler_SortAndOrder(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms", ListHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms?sort=capacity&order=desc", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON body, got error: %v", err)
+	}
+
+	rooms, ok := payload["rooms"].([]any)
+	if !ok {
+		t.Fatalf("expected rooms to be an array, got %T", payload["rooms"])
+	}
+	if len(rooms) != 2 {
+		t.Fatalf("expected 2 rooms, got %d", len(rooms))
+	}
+
+	first, ok := rooms[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected first room object, got %T", rooms[0])
+	}
+	second, ok := rooms[1].(map[string]any)
+	if !ok {
+		t.Fatalf("expected second room object, got %T", rooms[1])
+	}
+
+	firstCapacity, _ := first["capacity"].(float64)
+	secondCapacity, _ := second["capacity"].(float64)
+	if firstCapacity < secondCapacity {
+		t.Fatalf("expected descending capacity order, got %.0f then %.0f", firstCapacity, secondCapacity)
+	}
+}
+
+func TestListHandler_ReturnsBadRequestWhenSortIsInvalid(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms", ListHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms?sort=invalid", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON error body, got error: %v", err)
+	}
+
+	errObj, ok := payload["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error envelope, got %T", payload["error"])
+	}
+
+	if code, _ := errObj["code"].(string); code != "INVALID_PARAMETERS" {
+		t.Fatalf("expected INVALID_PARAMETERS code, got %q", code)
+	}
+}
+
+func TestListHandler_ReturnsBadRequestWhenCapacityMinGreaterThanCapacityMax(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms", ListHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms?capacity_min=200&capacity_max=100", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON error body, got error: %v", err)
+	}
+
+	errObj, ok := payload["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error envelope, got %T", payload["error"])
+	}
+
+	if code, _ := errObj["code"].(string); code != "INVALID_PARAMETERS" {
+		t.Fatalf("expected INVALID_PARAMETERS code, got %q", code)
+	}
+}
+
 func TestDetailHandler_ReturnsOK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
