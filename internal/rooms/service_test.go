@@ -158,7 +158,7 @@ func TestService_ListRooms_CanReturnMaintenanceWhenReliableUnavailabilityExists(
 func TestService_GetRoomDetail_ReturnsKnownRoom(t *testing.T) {
 	svc := newTestRoomService(t, false)
 
-	detail, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
+	detail, _, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -171,7 +171,7 @@ func TestService_GetRoomDetail_ReturnsKnownRoom(t *testing.T) {
 func TestService_GetRoomDetail_ReturnsRoomNotFoundWhenUnknownCode(t *testing.T) {
 	svc := newTestRoomService(t, false)
 
-	_, err := svc.GetRoomDetail(context.Background(), "UNKNOWN")
+	_, _, err := svc.GetRoomDetail(context.Background(), "UNKNOWN")
 	if err == nil {
 		t.Fatalf("expected room not found error")
 	}
@@ -208,23 +208,24 @@ func TestService_GetRoomDetail_ScheduleTodayIsOrdered(t *testing.T) {
 	interpreter := domain.NewStatusInterpreter(clock, nil)
 	svc := NewService(inventory, eventsReader, interpreter, clock)
 
-	detail, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
+	detail, scheduleToday, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if len(detail.ScheduleToday) != 3 {
-		t.Fatalf("expected 3 events in schedule_today, got %d", len(detail.ScheduleToday))
+	if len(scheduleToday) != 3 {
+		t.Fatalf("expected 3 events in schedule_today, got %d", len(scheduleToday))
 	}
-	if detail.ScheduleToday[0].Title != "First" || detail.ScheduleToday[1].Title != "Second" || detail.ScheduleToday[2].Title != "Third" {
-		t.Fatalf("expected ordered schedule First->Second->Third, got %+v", detail.ScheduleToday)
+	if scheduleToday[0].Title != "First" || scheduleToday[1].Title != "Second" || scheduleToday[2].Title != "Third" {
+		t.Fatalf("expected ordered schedule First->Second->Third, got %+v", scheduleToday)
 	}
+	_ = detail
 }
 
 func TestService_GetRoomDetail_StatusIsCoherentWithTodayEvents(t *testing.T) {
 	svc := newTestRoomService(t, false)
 
-	detail, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
+	detail, _, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -239,7 +240,7 @@ func TestService_GetRoomDetail_StatusIsCoherentWithTodayEvents(t *testing.T) {
 
 func TestService_GetRoomDetail_MaintenanceOnlyWhenReliableDataExists(t *testing.T) {
 	withoutMaintenance := newTestRoomService(t, false)
-	detailWithout, err := withoutMaintenance.GetRoomDetail(context.Background(), "AMPHI-A")
+	detailWithout, _, err := withoutMaintenance.GetRoomDetail(context.Background(), "AMPHI-A")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -248,7 +249,7 @@ func TestService_GetRoomDetail_MaintenanceOnlyWhenReliableDataExists(t *testing.
 	}
 
 	withMaintenance := newTestRoomService(t, true)
-	detailWith, err := withMaintenance.GetRoomDetail(context.Background(), "AMPHI-A")
+	detailWith, _, err := withMaintenance.GetRoomDetail(context.Background(), "AMPHI-A")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
