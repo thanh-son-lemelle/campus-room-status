@@ -107,6 +107,14 @@ func TestDomainContract_Interfaces(t *testing.T) {
 	requireInterfaceMethodContains(
 		t,
 		pkg,
+		"RoomService",
+		"GetRoomSchedule",
+		[]string{"context.Context", "string", "time.Time", "[]Event", "error"},
+	)
+
+	requireInterfaceMethodContains(
+		t,
+		pkg,
 		"HealthService",
 		"GetHealth",
 		[]string{"context.Context", "HealthStatus", "error"},

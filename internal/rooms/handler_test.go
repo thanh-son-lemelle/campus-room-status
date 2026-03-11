@@ -560,6 +560,78 @@ func TestScheduleHandler_ReturnsExpectedContract(t *testing.T) {
 	}
 }
 
+func TestScheduleHandler_ReturnsBadRequestWhenStartIsMissing(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms/:code/schedule", ScheduleHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?end=2026-03-09T18:00:00Z", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestScheduleHandler_ReturnsBadRequestWhenEndIsMissing(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms/:code/schedule", ScheduleHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?start=2026-03-09T08:00:00Z", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestScheduleHandler_ReturnsBadRequestWhenStartIsAfterEnd(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms/:code/schedule", ScheduleHandler)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/rooms/AMPHI-A/schedule?start=2026-03-09T20:00:00Z&end=2026-03-09T18:00:00Z",
+		nil,
+	)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestScheduleHandler_ReturnsNotFoundForUnknownRoom(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms/:code/schedule", ScheduleHandler)
+
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/rooms/UNKNOWN/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		nil,
+	)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
 func assertEventContract(t *testing.T, event map[string]any, fieldName string) {
 	t.Helper()
 
