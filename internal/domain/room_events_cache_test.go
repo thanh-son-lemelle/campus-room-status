@@ -176,6 +176,12 @@ func TestRoomEventsCache_ExposesDegradedStateForHealth(t *testing.T) {
 	if initialHealth.LastCalendarErrorAt != nil {
 		t.Fatalf("expected no calendar error timestamp while healthy")
 	}
+	if initialHealth.LastSuccessfulRefreshAt == nil {
+		t.Fatalf("expected successful refresh timestamp while healthy")
+	}
+	if !initialHealth.LastSuccessfulRefreshAt.Equal(now) {
+		t.Fatalf("expected last successful refresh %s, got %s", now, initialHealth.LastSuccessfulRefreshAt)
+	}
 
 	calendar.SetError(errors.New("calendar unavailable"))
 	clock.Advance(ttl + time.Second)
@@ -190,6 +196,12 @@ func TestRoomEventsCache_ExposesDegradedStateForHealth(t *testing.T) {
 	}
 	if degradedHealth.LastCalendarErrorAt == nil {
 		t.Fatalf("expected calendar error timestamp in degraded state")
+	}
+	if degradedHealth.LastSuccessfulRefreshAt == nil {
+		t.Fatalf("expected successful refresh timestamp to stay available in degraded state")
+	}
+	if !degradedHealth.LastSuccessfulRefreshAt.Equal(now) {
+		t.Fatalf("expected last successful refresh to stay %s, got %s", now, degradedHealth.LastSuccessfulRefreshAt)
 	}
 
 	calendar.SetError(nil)
@@ -209,6 +221,12 @@ func TestRoomEventsCache_ExposesDegradedStateForHealth(t *testing.T) {
 	}
 	if recoveredHealth.LastCalendarErrorAt != nil {
 		t.Fatalf("expected calendar error timestamp to be cleared after recovery")
+	}
+	if recoveredHealth.LastSuccessfulRefreshAt == nil {
+		t.Fatalf("expected successful refresh timestamp after recovery")
+	}
+	if !recoveredHealth.LastSuccessfulRefreshAt.Equal(clock.Now()) {
+		t.Fatalf("expected last successful refresh %s, got %s", clock.Now(), recoveredHealth.LastSuccessfulRefreshAt)
 	}
 }
 

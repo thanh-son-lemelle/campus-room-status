@@ -25,16 +25,24 @@ type InventoryCacheMetadata struct {
 	LastRefresh time.Time
 }
 
+type InventoryCacheHealthState struct {
+	Degraded       bool
+	LastRefresh    time.Time
+	LastAdminError *time.Time
+}
+
 type InventoryCache struct {
 	source InventorySource
 	ttl    time.Duration
 	clock  CacheClock
 
-	mu          sync.RWMutex
-	snapshot    InventorySnapshot
-	expiresAt   time.Time
-	lastRefresh time.Time
-	hasData     bool
+	mu             sync.RWMutex
+	snapshot       InventorySnapshot
+	expiresAt      time.Time
+	lastRefresh    time.Time
+	hasData        bool
+	degraded       bool
+	lastAdminError *time.Time
 }
 
 func NewInventoryCache(ctx context.Context, source InventorySource, ttl time.Duration, clock CacheClock) (*InventoryCache, error) {
@@ -85,6 +93,22 @@ func (c *InventoryCache) Metadata() InventoryCacheMetadata {
 	}
 }
 
+func (c *InventoryCache) HealthState() InventoryCacheHealthState {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	state := InventoryCacheHealthState{
+		Degraded:    c.degraded,
+		LastRefresh: c.lastRefresh,
+	}
+	if c.lastAdminError != nil {
+		lastError := *c.lastAdminError
+		state.LastAdminError = &lastError
+	}
+
+	return state
+}
+
 func (c *InventoryCache) warmup(ctx context.Context) error {
 	snapshot, err := c.source.LoadInventory(ctx)
 	if err != nil {
@@ -100,6 +124,8 @@ func (c *InventoryCache) warmup(ctx context.Context) error {
 	c.lastRefresh = now
 	c.expiresAt = now.Add(c.ttl)
 	c.hasData = true
+	c.degraded = false
+	c.lastAdminError = nil
 
 	return nil
 }
@@ -115,6 +141,10 @@ func (c *InventoryCache) refresh(ctx context.Context) (InventorySnapshot, error)
 
 	snapshot, err := c.source.LoadInventory(ctx)
 	if err != nil {
+		failedAt := now
+		c.degraded = true
+		c.lastAdminError = &failedAt
+
 		if c.hasData {
 			return cloneSnapshot(c.snapshot), nil
 		}
@@ -125,6 +155,8 @@ func (c *InventoryCache) refresh(ctx context.Context) (InventorySnapshot, error)
 	c.lastRefresh = now
 	c.expiresAt = now.Add(c.ttl)
 	c.hasData = true
+	c.degraded = false
+	c.lastAdminError = nil
 
 	return cloneSnapshot(c.snapshot), nil
 }

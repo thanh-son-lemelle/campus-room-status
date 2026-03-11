@@ -145,6 +145,74 @@ func TestInventoryCache_RefreshOnExpiration(t *testing.T) {
 	}
 }
 
+func TestInventoryCache_ExposesDegradedStateForHealth(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 18, 0, 0, 0, time.UTC)
+	ttl := time.Hour
+	clock := &fakeClock{now: now}
+	source := &fakeInventorySource{
+		snapshots: []InventorySnapshot{
+			snapshotFixture("B1", "AMPHI-A"),
+			snapshotFixture("B2", "LAB-204"),
+		},
+	}
+
+	cache, err := NewInventoryCache(context.Background(), source, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	initialHealth := cache.HealthState()
+	if initialHealth.Degraded {
+		t.Fatalf("expected healthy cache state after warmup")
+	}
+	if initialHealth.LastAdminError != nil {
+		t.Fatalf("expected no admin error timestamp while healthy")
+	}
+	if !initialHealth.LastRefresh.Equal(now) {
+		t.Fatalf("expected last refresh %s, got %s", now, initialHealth.LastRefresh)
+	}
+
+	source.SetError(errors.New("admin directory unavailable"))
+	clock.Advance(ttl + time.Minute)
+
+	if _, err := cache.GetInventory(context.Background()); err != nil {
+		t.Fatalf("expected stale fallback without error, got %v", err)
+	}
+
+	degradedHealth := cache.HealthState()
+	if !degradedHealth.Degraded {
+		t.Fatalf("expected degraded cache state when stale fallback is used")
+	}
+	if degradedHealth.LastAdminError == nil {
+		t.Fatalf("expected admin error timestamp in degraded state")
+	}
+	if !degradedHealth.LastRefresh.Equal(now) {
+		t.Fatalf("expected last refresh to stay on previous successful refresh, got %s", degradedHealth.LastRefresh)
+	}
+
+	source.SetError(nil)
+	clock.Advance(time.Minute)
+
+	refreshed, err := cache.GetInventory(context.Background())
+	if err != nil {
+		t.Fatalf("expected refresh recovery to succeed, got %v", err)
+	}
+	if len(refreshed.Rooms) != 1 || refreshed.Rooms[0].Code != "LAB-204" {
+		t.Fatalf("expected refreshed inventory payload after recovery, got %+v", refreshed.Rooms)
+	}
+
+	recoveredHealth := cache.HealthState()
+	if recoveredHealth.Degraded {
+		t.Fatalf("expected degraded state to be cleared after successful refresh")
+	}
+	if recoveredHealth.LastAdminError != nil {
+		t.Fatalf("expected admin error timestamp to be cleared after recovery")
+	}
+	if !recoveredHealth.LastRefresh.Equal(clock.Now()) {
+		t.Fatalf("expected last refresh %s, got %s", clock.Now(), recoveredHealth.LastRefresh)
+	}
+}
+
 type fakeClock struct {
 	now time.Time
 }
