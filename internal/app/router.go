@@ -42,19 +42,19 @@ func NewRouter() *gin.Engine {
 		))
 	})
 
-	buildingService := newBuildingService()
+	buildingService, roomService, healthService := newRuntimeServices()
 
 	apiGroup := r.Group("/api/v1")
 	apiGroup.GET("/buildings", buildings.NewHandler(buildingService, nil))
-	apiGroup.GET("/health", health.Handler)
-	apiGroup.GET("/rooms", rooms.ListHandler)
-	apiGroup.GET("/rooms/:code", rooms.DetailHandler)
-	apiGroup.GET("/rooms/:code/schedule", rooms.ScheduleHandler)
+	apiGroup.GET("/health", health.NewHandler(healthService))
+	apiGroup.GET("/rooms", rooms.NewListHandler(roomService, nil))
+	apiGroup.GET("/rooms/:code", rooms.NewDetailHandler(roomService))
+	apiGroup.GET("/rooms/:code/schedule", rooms.NewScheduleHandler(roomService))
 
 	return r
 }
 
-func newBuildingService() domain.BuildingService {
+func newRuntimeServices() (domain.BuildingService, domain.RoomService, domain.HealthService) {
 	cache, err := domain.NewInventoryCache(
 		context.Background(),
 		staticInventorySource{},
@@ -65,7 +65,20 @@ func newBuildingService() domain.BuildingService {
 		panic(err)
 	}
 
-	return buildings.NewService(cache)
+	eventsCache, err := domain.NewRoomEventsCache(
+		staticCalendarClient{},
+		5*time.Minute,
+		nil,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	buildingService := buildings.NewService(cache)
+	roomService := rooms.NewService(cache, eventsCache, nil, nil)
+	healthService := health.NewService(cache, eventsCache, nil, "dev")
+
+	return buildingService, roomService, healthService
 }
 
 type staticInventorySource struct{}
@@ -79,6 +92,59 @@ func (staticInventorySource) LoadInventory(context.Context) (domain.InventorySna
 				Address: "1 Campus Street",
 				Floors:  []int{0, 1, 2},
 			},
+			{
+				ID:      "B2",
+				Name:    "Building B",
+				Address: "2 Campus Street",
+				Floors:  []int{0, 1, 2, 3},
+			},
+		},
+		Rooms: []domain.Room{
+			{
+				Code:     "AMPHI-A",
+				Name:     "Amphitheater A",
+				Building: "B1",
+				Floor:    1,
+				Capacity: 180,
+				Type:     "amphitheater",
+				Status:   "available",
+			},
+			{
+				Code:     "LAB-204",
+				Name:     "Computer Lab 204",
+				Building: "B2",
+				Floor:    2,
+				Capacity: 30,
+				Type:     "lab",
+				Status:   "available",
+			},
 		},
 	}, nil
+}
+
+type staticCalendarClient struct{}
+
+func (staticCalendarClient) ListRoomEvents(_ context.Context, resourceEmail string, _, _ time.Time) ([]domain.Event, error) {
+	switch resourceEmail {
+	case "AMPHI-A":
+		return []domain.Event{
+			{
+				Title:     "Capstone Review",
+				Start:     time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC),
+				End:       time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC),
+				Organizer: "Academic Board",
+			},
+		}, nil
+	case "LAB-204":
+		return []domain.Event{
+			{
+				Title:     "OS Lab Session",
+				Start:     time.Date(2026, time.March, 9, 10, 0, 0, 0, time.UTC),
+				End:       time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC),
+				Organizer: "Systems Team",
+			},
+		}, nil
+	default:
+		return nil, nil
+	}
 }

@@ -26,7 +26,7 @@ func TestService_GetHealth_HealthyComplete(t *testing.T) {
 				LastSuccessfulRefreshAt: &calendarRefresh,
 			},
 		},
-		sequenceClock{times: []time.Time{now, now}},
+		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
 	)
 
@@ -69,7 +69,7 @@ func TestService_GetHealth_AdminDownButStaleAvailable(t *testing.T) {
 				LastSuccessfulRefreshAt: &calendarRefresh,
 			},
 		},
-		sequenceClock{times: []time.Time{now, now}},
+		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
 	)
 
@@ -109,7 +109,7 @@ func TestService_GetHealth_CalendarDownButStaleAvailable(t *testing.T) {
 				LastSuccessfulRefreshAt: &calendarRefresh,
 			},
 		},
-		sequenceClock{times: []time.Time{now, now}},
+		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
 	)
 
@@ -147,7 +147,7 @@ func TestService_GetHealth_LastSyncIsMostRecentSuccessfulRefresh(t *testing.T) {
 				LastSuccessfulRefreshAt: &calendarRefresh,
 			},
 		},
-		sequenceClock{times: []time.Time{now, now}},
+		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
 	)
 
@@ -177,7 +177,7 @@ func TestService_GetHealth_ResponseTimeIsSet(t *testing.T) {
 				Degraded: false,
 			},
 		},
-		sequenceClock{times: []time.Time{start, end}},
+		&sequenceClock{times: []time.Time{start, end}},
 		"dev",
 	)
 
@@ -212,7 +212,7 @@ type sequenceClock struct {
 	index int
 }
 
-func (c sequenceClock) Now() time.Time {
+func (c *sequenceClock) Now() time.Time {
 	if len(c.times) == 0 {
 		return time.Now().UTC()
 	}

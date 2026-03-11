@@ -23,8 +23,9 @@ type RoomEventsCacheMetadata struct {
 }
 
 type RoomEventsCacheHealthState struct {
-	Degraded            bool
-	LastCalendarErrorAt *time.Time
+	Degraded                bool
+	LastCalendarErrorAt     *time.Time
+	LastSuccessfulRefreshAt *time.Time
 }
 
 type RoomEventsCache struct {
@@ -32,10 +33,11 @@ type RoomEventsCache struct {
 	ttl      time.Duration
 	clock    Clock
 
-	mu                  sync.RWMutex
-	entries             map[string]roomEventsCacheEntry
-	degraded            bool
-	lastCalendarErrorAt *time.Time
+	mu                      sync.RWMutex
+	entries                 map[string]roomEventsCacheEntry
+	degraded                bool
+	lastCalendarErrorAt     *time.Time
+	lastSuccessfulRefreshAt *time.Time
 }
 
 type roomEventsCacheEntry struct {
@@ -112,6 +114,8 @@ func (c *RoomEventsCache) Get(ctx context.Context, key RoomEventsKey) ([]Event, 
 
 	c.degraded = false
 	c.lastCalendarErrorAt = nil
+	successAt := now
+	c.lastSuccessfulRefreshAt = &successAt
 
 	return cloneEvents(refreshed.events), nil
 }
@@ -150,6 +154,10 @@ func (c *RoomEventsCache) HealthState() RoomEventsCacheHealthState {
 	if c.lastCalendarErrorAt != nil {
 		lastError := *c.lastCalendarErrorAt
 		state.LastCalendarErrorAt = &lastError
+	}
+	if c.lastSuccessfulRefreshAt != nil {
+		lastSuccess := *c.lastSuccessfulRefreshAt
+		state.LastSuccessfulRefreshAt = &lastSuccess
 	}
 
 	return state
