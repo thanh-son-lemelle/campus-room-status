@@ -428,6 +428,40 @@ func TestDetailHandler_ReturnsExpectedContract(t *testing.T) {
 	}
 }
 
+func TestDetailHandler_ReturnsRoomNotFoundForUnknownCode(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	r := gin.New()
+	r.GET("/rooms/:code", DetailHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms/UNKNOWN-ROOM", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON error body, got error: %v", err)
+	}
+
+	errObj, ok := payload["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error envelope, got %T", payload["error"])
+	}
+
+	code, ok := errObj["code"].(string)
+	if !ok {
+		t.Fatalf("expected error.code as string")
+	}
+	if code != "ROOM_NOT_FOUND" {
+		t.Fatalf("expected ROOM_NOT_FOUND, got %q", code)
+	}
+}
+
 func TestScheduleHandler_ReturnsOK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
