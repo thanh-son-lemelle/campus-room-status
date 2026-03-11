@@ -9,6 +9,7 @@ import (
 // warmup at startup, serve from cache while TTL is valid, refresh on expiration, and keep stale data when refresh fails.
 type RoomService interface {
 	ListRooms(ctx context.Context, filters RoomFilters) ([]Room, error)
+	GetRoomDetail(ctx context.Context, code string) (Room, []Event, error)
 }
 
 type BuildingService interface {

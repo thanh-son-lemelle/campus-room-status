@@ -155,6 +155,109 @@ func TestService_ListRooms_CanReturnMaintenanceWhenReliableUnavailabilityExists(
 	}
 }
 
+func TestService_GetRoomDetail_ReturnsKnownRoom(t *testing.T) {
+	svc := newTestRoomService(t, false)
+
+	detail, _, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if detail.Code != "AMPHI-A" {
+		t.Fatalf("expected room code AMPHI-A, got %q", detail.Code)
+	}
+}
+
+func TestService_GetRoomDetail_ReturnsRoomNotFoundWhenUnknownCode(t *testing.T) {
+	svc := newTestRoomService(t, false)
+
+	_, _, err := svc.GetRoomDetail(context.Background(), "UNKNOWN")
+	if err == nil {
+		t.Fatalf("expected room not found error")
+	}
+
+	notFoundErr, ok := err.(*domain.RoomNotFoundError)
+	if !ok {
+		t.Fatalf("expected RoomNotFoundError, got %T", err)
+	}
+	if notFoundErr.RoomCode != "UNKNOWN" {
+		t.Fatalf("expected missing code UNKNOWN, got %q", notFoundErr.RoomCode)
+	}
+}
+
+func TestService_GetRoomDetail_ScheduleTodayIsOrdered(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
+	clock := roomServiceTestClock{now: now}
+
+	inventory := fakeInventoryReader{
+		snapshot: domain.InventorySnapshot{
+			Rooms: []domain.Room{
+				{Code: "AMPHI-A", Name: "Amphitheater A", Building: "B1", Capacity: 180, Type: "amphitheater"},
+			},
+		},
+	}
+	eventsReader := mapRoomEventsReader{
+		eventsByRoom: map[string][]domain.Event{
+			"AMPHI-A": {
+				{Title: "Third", Start: now.Add(2 * time.Hour), End: now.Add(3 * time.Hour)},
+				{Title: "First", Start: now.Add(-30 * time.Minute), End: now.Add(15 * time.Minute)},
+				{Title: "Second", Start: now.Add(time.Hour), End: now.Add(90 * time.Minute)},
+			},
+		},
+	}
+	interpreter := domain.NewStatusInterpreter(clock, nil)
+	svc := NewService(inventory, eventsReader, interpreter, clock)
+
+	detail, scheduleToday, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(scheduleToday) != 3 {
+		t.Fatalf("expected 3 events in schedule_today, got %d", len(scheduleToday))
+	}
+	if scheduleToday[0].Title != "First" || scheduleToday[1].Title != "Second" || scheduleToday[2].Title != "Third" {
+		t.Fatalf("expected ordered schedule First->Second->Third, got %+v", scheduleToday)
+	}
+	_ = detail
+}
+
+func TestService_GetRoomDetail_StatusIsCoherentWithTodayEvents(t *testing.T) {
+	svc := newTestRoomService(t, false)
+
+	detail, _, err := svc.GetRoomDetail(context.Background(), "AMPHI-A")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if detail.Status != domain.RoomStatusOccupied {
+		t.Fatalf("expected occupied status, got %q", detail.Status)
+	}
+	if detail.CurrentEvent == nil {
+		t.Fatalf("expected current_event for occupied room")
+	}
+}
+
+func TestService_GetRoomDetail_MaintenanceOnlyWhenReliableDataExists(t *testing.T) {
+	withoutMaintenance := newTestRoomService(t, false)
+	detailWithout, _, err := withoutMaintenance.GetRoomDetail(context.Background(), "AMPHI-A")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if detailWithout.Status == domain.RoomStatusMaintenance {
+		t.Fatalf("did not expect maintenance without reliable source")
+	}
+
+	withMaintenance := newTestRoomService(t, true)
+	detailWith, _, err := withMaintenance.GetRoomDetail(context.Background(), "AMPHI-A")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if detailWith.Status != domain.RoomStatusMaintenance {
+		t.Fatalf("expected maintenance with reliable source, got %q", detailWith.Status)
+	}
+}
+
 type roomServiceTestClock struct {
 	now time.Time
 }

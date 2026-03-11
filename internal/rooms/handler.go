@@ -66,7 +66,9 @@ var roomsFixture = []api.RoomResponse{
 	},
 }
 
-var defaultListHandler = NewListHandler(newDefaultListService(), nil)
+var defaultRoomService = newDefaultListService()
+var defaultListHandler = NewListHandler(defaultRoomService, nil)
+var defaultDetailHandler = NewDetailHandler(defaultRoomService)
 
 func ListHandler(c *gin.Context) {
 	defaultListHandler(c)
@@ -138,9 +140,47 @@ func (h *listHandler) handle(c *gin.Context) {
 }
 
 func DetailHandler(c *gin.Context) {
-	room, err := roomByCode(c.Param("code"))
+	defaultDetailHandler(c)
+}
+
+func NewDetailHandler(service domain.RoomService) gin.HandlerFunc {
+	h := &detailHandler{
+		service: service,
+	}
+
+	return h.handle
+}
+
+type detailHandler struct {
+	service domain.RoomService
+}
+
+func (h *detailHandler) handle(c *gin.Context) {
+	if h.service == nil {
+		api.WriteError(c, api.NewHTTPError(
+			http.StatusInternalServerError,
+			api.ErrorCodeInternalServerError,
+			"Room service is not configured",
+		))
+		return
+	}
+
+	room, scheduleToday, err := h.service.GetRoomDetail(c.Request.Context(), c.Param("code"))
 	if err != nil {
-		api.WriteError(c, err)
+		var roomNotFoundErr *domain.RoomNotFoundError
+		var serviceUnavailableErr *domain.ServiceUnavailableError
+		switch {
+		case errors.As(err, &roomNotFoundErr):
+			api.WriteError(c, err)
+		case errors.As(err, &serviceUnavailableErr):
+			api.WriteError(c, err)
+		default:
+			api.WriteError(c, api.NewHTTPError(
+				http.StatusInternalServerError,
+				api.ErrorCodeInternalServerError,
+				"Une erreur interne est survenue",
+			))
+		}
 		return
 	}
 
@@ -152,9 +192,9 @@ func DetailHandler(c *gin.Context) {
 		Capacity:      room.Capacity,
 		Type:          room.Type,
 		Status:        room.Status,
-		CurrentEvent:  room.CurrentEvent,
-		NextEvent:     room.NextEvent,
-		ScheduleToday: scheduleFixture,
+		CurrentEvent:  domainEventToAPIEvent(room.CurrentEvent),
+		NextEvent:     domainEventToAPIEvent(room.NextEvent),
+		ScheduleToday: mapDomainEventsToAPIEvents(scheduleToday),
 	})
 }
 
@@ -320,6 +360,24 @@ func domainEventToAPIEvent(event *domain.Event) *api.EventResponse {
 		End:       event.End,
 		Organizer: event.Organizer,
 	}
+}
+
+func mapDomainEventsToAPIEvents(events []domain.Event) []api.EventResponse {
+	if events == nil {
+		return nil
+	}
+
+	out := make([]api.EventResponse, len(events))
+	for i := range events {
+		out[i] = api.EventResponse{
+			Title:     events[i].Title,
+			Start:     events[i].Start,
+			End:       events[i].End,
+			Organizer: events[i].Organizer,
+		}
+	}
+
+	return out
 }
 
 func newDefaultListService() domain.RoomService {

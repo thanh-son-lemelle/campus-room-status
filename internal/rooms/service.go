@@ -3,6 +3,7 @@ package rooms
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	"campus-room-status/internal/domain"
@@ -93,6 +94,59 @@ func (s *service) ListRooms(ctx context.Context, filters domain.RoomFilters) ([]
 	return domain.FilterAndSortRooms(enrichedRooms, filters)
 }
 
+func (s *service) GetRoomDetail(ctx context.Context, code string) (domain.Room, []domain.Event, error) {
+	if s.inventory == nil {
+		return domain.Room{}, nil, errors.New("inventory cache is required")
+	}
+	if s.events == nil {
+		return domain.Room{}, nil, errors.New("room events cache is required")
+	}
+
+	snapshot, err := s.inventory.GetInventory(ctx)
+	if err != nil {
+		return domain.Room{}, nil, err
+	}
+
+	var found *domain.Room
+	for i := range snapshot.Rooms {
+		if snapshot.Rooms[i].Code == code {
+			room := cloneDomainRoom(snapshot.Rooms[i])
+			found = &room
+			break
+		}
+	}
+	if found == nil {
+		return domain.Room{}, nil, &domain.RoomNotFoundError{RoomCode: code}
+	}
+
+	now := s.clock.Now()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	events, err := s.events.Get(ctx, domain.RoomEventsKey{
+		RoomEmail: roomEventLookupKey(*found),
+		Start:     startOfDay,
+		End:       endOfDay,
+	})
+	if err != nil {
+		return domain.Room{}, nil, &domain.ServiceUnavailableError{Service: "google"}
+	}
+
+	scheduleToday := sortEventsByStart(events)
+	currentEvent, nextEvent := currentAndNextEvent(scheduleToday, now)
+
+	enriched := cloneDomainRoom(*found)
+	enriched.CurrentEvent = currentEvent
+	enriched.NextEvent = nextEvent
+	enriched.Status = s.statusInterpreter.Resolve(
+		ctx,
+		directoryRoomFromDomainRoom(*found),
+		scheduleToday,
+	)
+
+	return enriched, scheduleToday, nil
+}
+
 func roomEventLookupKey(room domain.Room) string {
 	if room.Code != "" {
 		return room.Code
@@ -143,6 +197,24 @@ func cloneDomainRoom(room domain.Room) domain.Room {
 		next := *room.NextEvent
 		cloned.NextEvent = &next
 	}
+	return cloned
+}
+
+func sortEventsByStart(events []domain.Event) []domain.Event {
+	cloned := cloneEvents(events)
+	sort.SliceStable(cloned, func(i, j int) bool {
+		return cloned[i].Start.Before(cloned[j].Start)
+	})
+	return cloned
+}
+
+func cloneEvents(events []domain.Event) []domain.Event {
+	if events == nil {
+		return nil
+	}
+
+	cloned := make([]domain.Event, len(events))
+	copy(cloned, events)
 	return cloned
 }
 
