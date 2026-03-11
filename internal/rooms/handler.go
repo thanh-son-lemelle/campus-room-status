@@ -1,6 +1,8 @@
 package rooms
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -64,84 +66,74 @@ var roomsFixture = []api.RoomResponse{
 	},
 }
 
+var defaultListHandler = NewListHandler(newDefaultListService(), nil)
+
 func ListHandler(c *gin.Context) {
-	responseFilters := make(map[string]any)
-	queryFilters := domain.RoomFilters{}
+	defaultListHandler(c)
+}
 
-	if building := c.Query("building"); building != "" {
-		queryFilters.Building = &building
-		responseFilters["building"] = building
+func NewListHandler(service domain.RoomService, clock domain.Clock) gin.HandlerFunc {
+	h := &listHandler{
+		service: service,
+		clock:   clock,
+	}
+	if h.clock == nil {
+		h.clock = listHandlerClock{}
 	}
 
-	if roomType := c.Query("type"); roomType != "" {
-		queryFilters.Type = &roomType
-		responseFilters["type"] = roomType
+	return h.handle
+}
+
+type listHandler struct {
+	service domain.RoomService
+	clock   domain.Clock
+}
+
+func (h *listHandler) handle(c *gin.Context) {
+	if h.service == nil {
+		api.WriteError(c, api.NewHTTPError(
+			http.StatusInternalServerError,
+			api.ErrorCodeInternalServerError,
+			"Room service is not configured",
+		))
+		return
 	}
 
-	if status := c.Query("status"); status != "" {
-		queryFilters.Status = &status
-		responseFilters["status"] = status
-	}
-
-	if raw := c.Query("capacity_min"); raw != "" {
-		parsed, err := strconv.Atoi(raw)
-		if err != nil {
-			api.WriteError(c, &domain.InvalidParameterError{
-				Parameter: "capacity_min",
-				Value:     raw,
-			})
-			return
-		}
-
-		queryFilters.CapacityMin = &parsed
-		responseFilters["capacity_min"] = parsed
-	}
-
-	if raw := c.Query("capacity_max"); raw != "" {
-		parsed, err := strconv.Atoi(raw)
-		if err != nil {
-			api.WriteError(c, &domain.InvalidParameterError{
-				Parameter: "capacity_max",
-				Value:     raw,
-			})
-			return
-		}
-
-		queryFilters.CapacityMax = &parsed
-		responseFilters["capacity_max"] = parsed
-	}
-
-	if sortField := c.Query("sort"); sortField != "" {
-		queryFilters.Sort = &sortField
-		responseFilters["sort"] = sortField
-	}
-
-	if order := c.Query("order"); order != "" {
-		queryFilters.Order = &order
-		responseFilters["order"] = order
-	}
-
-	rooms := make([]domain.Room, len(roomsFixture))
-	for i := range roomsFixture {
-		rooms[i] = apiRoomToDomainRoom(roomsFixture[i])
-	}
-
-	filteredDomainRooms, err := domain.FilterAndSortRooms(rooms, queryFilters)
+	queryFilters, responseFilters, err := parseListFilters(c)
 	if err != nil {
 		api.WriteError(c, err)
 		return
 	}
 
-	filteredRooms := make([]api.RoomResponse, len(filteredDomainRooms))
-	for i := range filteredDomainRooms {
-		filteredRooms[i] = domainRoomToAPIRoom(filteredDomainRooms[i])
+	rooms, err := h.service.ListRooms(c.Request.Context(), queryFilters)
+	if err != nil {
+		var invalidParamErr *domain.InvalidParameterError
+		var serviceUnavailableErr *domain.ServiceUnavailableError
+		switch {
+		case errors.As(err, &invalidParamErr):
+			api.WriteError(c, err)
+		case errors.As(err, &serviceUnavailableErr):
+			api.WriteError(c, err)
+		default:
+			api.WriteError(c, api.NewHTTPError(
+				http.StatusInternalServerError,
+				api.ErrorCodeInternalServerError,
+				"Une erreur interne est survenue",
+			))
+		}
+		return
+	}
+
+	responseRooms := make([]api.RoomResponse, len(rooms))
+	for i := range rooms {
+		responseRooms[i] = domainRoomToAPIRoom(rooms[i])
 	}
 
 	c.JSON(http.StatusOK, api.RoomsListResponse{
-		Timestamp: time.Now().UTC(),
+		Timestamp: h.clock.Now().UTC(),
 		Filters:   responseFilters,
-		Count:     len(filteredRooms),
-		Rooms:     filteredRooms,
+		Count:     len(responseRooms),
+		Rooms:     responseRooms,
 	})
 }
 
@@ -218,6 +210,64 @@ func roomByCode(code string) (*api.RoomResponse, error) {
 	return nil, &domain.RoomNotFoundError{RoomCode: code}
 }
 
+func parseListFilters(c *gin.Context) (domain.RoomFilters, map[string]any, error) {
+	responseFilters := make(map[string]any)
+	queryFilters := domain.RoomFilters{}
+
+	if building := c.Query("building"); building != "" {
+		queryFilters.Building = &building
+		responseFilters["building"] = building
+	}
+
+	if roomType := c.Query("type"); roomType != "" {
+		queryFilters.Type = &roomType
+		responseFilters["type"] = roomType
+	}
+
+	if status := c.Query("status"); status != "" {
+		queryFilters.Status = &status
+		responseFilters["status"] = status
+	}
+
+	if raw := c.Query("capacity_min"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			return domain.RoomFilters{}, nil, &domain.InvalidParameterError{
+				Parameter: "capacity_min",
+				Value:     raw,
+			}
+		}
+
+		queryFilters.CapacityMin = &parsed
+		responseFilters["capacity_min"] = parsed
+	}
+
+	if raw := c.Query("capacity_max"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			return domain.RoomFilters{}, nil, &domain.InvalidParameterError{
+				Parameter: "capacity_max",
+				Value:     raw,
+			}
+		}
+
+		queryFilters.CapacityMax = &parsed
+		responseFilters["capacity_max"] = parsed
+	}
+
+	if sortField := c.Query("sort"); sortField != "" {
+		queryFilters.Sort = &sortField
+		responseFilters["sort"] = sortField
+	}
+
+	if order := c.Query("order"); order != "" {
+		queryFilters.Order = &order
+		responseFilters["order"] = order
+	}
+
+	return queryFilters, responseFilters, nil
+}
+
 func apiRoomToDomainRoom(room api.RoomResponse) domain.Room {
 	return domain.Room{
 		Code:         room.Code,
@@ -269,5 +319,95 @@ func domainEventToAPIEvent(event *domain.Event) *api.EventResponse {
 		Start:     event.Start,
 		End:       event.End,
 		Organizer: event.Organizer,
+	}
+}
+
+func newDefaultListService() domain.RoomService {
+	// TODO(ticket-13): replace default static sources with real Google adapters
+	// (Admin Directory inventory source + Calendar events client) wired from app composition root.
+	clock := fixedListServiceClock{
+		now: time.Date(2026, time.March, 9, 10, 30, 0, 0, time.UTC),
+	}
+
+	inventoryCache, err := domain.NewInventoryCache(
+		context.Background(),
+		defaultListInventorySource{},
+		time.Hour,
+		clock,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	eventsCache, err := domain.NewRoomEventsCache(
+		defaultListCalendarClient{},
+		5*time.Minute,
+		clock,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	statusInterpreter := domain.NewStatusInterpreter(clock, nil)
+	return NewService(inventoryCache, eventsCache, statusInterpreter, clock)
+}
+
+type listHandlerClock struct{}
+
+func (listHandlerClock) Now() time.Time {
+	return time.Now().UTC()
+}
+
+type fixedListServiceClock struct {
+	now time.Time
+}
+
+func (c fixedListServiceClock) Now() time.Time {
+	return c.now
+}
+
+type defaultListInventorySource struct{}
+
+func (defaultListInventorySource) LoadInventory(context.Context) (domain.InventorySnapshot, error) {
+	rooms := make([]domain.Room, len(roomsFixture))
+	for i := range roomsFixture {
+		rooms[i] = apiRoomToDomainRoom(roomsFixture[i])
+	}
+
+	return domain.InventorySnapshot{
+		Rooms: rooms,
+	}, nil
+}
+
+type defaultListCalendarClient struct{}
+
+func (defaultListCalendarClient) ListRoomEvents(_ context.Context, resourceEmail string, _, _ time.Time) ([]domain.Event, error) {
+	switch resourceEmail {
+	case "AMPHI-A":
+		if nextEventFixture == nil {
+			return nil, nil
+		}
+		return []domain.Event{
+			{
+				Title:     nextEventFixture.Title,
+				Start:     nextEventFixture.Start,
+				End:       nextEventFixture.End,
+				Organizer: nextEventFixture.Organizer,
+			},
+		}, nil
+	case "LAB-204":
+		if currentEventFixture == nil {
+			return nil, nil
+		}
+		return []domain.Event{
+			{
+				Title:     currentEventFixture.Title,
+				Start:     currentEventFixture.Start,
+				End:       currentEventFixture.End,
+				Organizer: currentEventFixture.Organizer,
+			},
+		}, nil
+	default:
+		return nil, nil
 	}
 }
