@@ -2,7 +2,11 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"campus-room-status/internal/api"
@@ -10,6 +14,7 @@ import (
 
 	"campus-room-status/internal/buildings"
 	"campus-room-status/internal/domain"
+	"campus-room-status/internal/google/adminsdk"
 	"campus-room-status/internal/health"
 	"campus-room-status/internal/rooms"
 )
@@ -57,7 +62,7 @@ func NewRouter() *gin.Engine {
 func newRuntimeServices() (domain.BuildingService, domain.RoomService, domain.HealthService) {
 	cache, err := domain.NewInventoryCache(
 		context.Background(),
-		staticInventorySource{},
+		newRuntimeInventorySource(),
 		time.Hour,
 		nil,
 	)
@@ -79,6 +84,104 @@ func newRuntimeServices() (domain.BuildingService, domain.RoomService, domain.He
 	healthService := health.NewService(cache, eventsCache, nil, "dev")
 
 	return buildingService, roomService, healthService
+}
+
+func newRuntimeInventorySource() domain.InventorySource {
+	tokenProvider, ok := newRuntimeAdminTokenProvider()
+	if !ok {
+		return staticInventorySource{}
+	}
+
+	source, err := adminsdk.NewInventorySource(
+		nil,
+		tokenProvider,
+		adminsdk.InventorySourceConfig{
+			BaseURL:  strings.TrimSpace(os.Getenv("GOOGLE_ADMIN_BASE_URL")),
+			Customer: strings.TrimSpace(os.Getenv("GOOGLE_ADMIN_CUSTOMER")),
+			PageSize: envInt("GOOGLE_ADMIN_PAGE_SIZE"),
+			Timeout:  envDuration("GOOGLE_ADMIN_TIMEOUT"),
+		},
+	)
+	if err != nil {
+		return staticInventorySource{}
+	}
+
+	return source
+}
+
+func newRuntimeAdminTokenProvider() (adminsdk.TokenProvider, bool) {
+	credentialsJSON, hasCredentials := readServiceAccountCredentials()
+	if hasCredentials {
+		provider, err := adminsdk.NewServiceAccountTokenProvider(adminsdk.ServiceAccountTokenProviderConfig{
+			CredentialsJSON: credentialsJSON,
+			Subject:         strings.TrimSpace(os.Getenv("GOOGLE_ADMIN_IMPERSONATED_USER")),
+		})
+		if err == nil {
+			return provider, true
+		}
+	}
+
+	token := strings.TrimSpace(os.Getenv("GOOGLE_ADMIN_BEARER_TOKEN"))
+	if token != "" {
+		return staticTokenProvider{token: token}, true
+	}
+
+	return nil, false
+}
+
+func readServiceAccountCredentials() ([]byte, bool) {
+	rawJSON := strings.TrimSpace(os.Getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
+	if rawJSON != "" {
+		return []byte(rawJSON), true
+	}
+
+	rawBase64 := strings.TrimSpace(os.Getenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64"))
+	if rawBase64 != "" {
+		decoded, err := base64.StdEncoding.DecodeString(rawBase64)
+		if err == nil && len(decoded) > 0 {
+			return decoded, true
+		}
+	}
+
+	filePath := strings.TrimSpace(os.Getenv("GOOGLE_SERVICE_ACCOUNT_FILE"))
+	if filePath == "" {
+		return nil, false
+	}
+
+	credentialsJSON, err := os.ReadFile(filePath)
+	if err != nil || len(credentialsJSON) == 0 {
+		return nil, false
+	}
+
+	return credentialsJSON, true
+}
+
+func envInt(name string) int {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return 0
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+
+	return value
+}
+
+func envDuration(name string) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return 0
+	}
+
+	value, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0
+	}
+
+	return value
 }
 
 type staticInventorySource struct{}
@@ -147,4 +250,12 @@ func (staticCalendarClient) ListRoomEvents(_ context.Context, resourceEmail stri
 	default:
 		return nil, nil
 	}
+}
+
+type staticTokenProvider struct {
+	token string
+}
+
+func (p staticTokenProvider) Token(context.Context) (string, error) {
+	return p.token, nil
 }
