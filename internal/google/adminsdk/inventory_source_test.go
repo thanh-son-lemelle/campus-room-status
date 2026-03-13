@@ -108,6 +108,9 @@ func TestInventorySource_LoadInventory_MapsGoogleResponseToBuildingsAndRooms(t *
 	if first.Code != "AMPHI-A" {
 		t.Fatalf("expected first room code AMPHI-A, got %q", first.Code)
 	}
+	if first.ResourceEmail != "amphi-a@example.org" {
+		t.Fatalf("expected first room resourceEmail amphi-a@example.org, got %q", first.ResourceEmail)
+	}
 	if first.Name != "AMPHI-A" {
 		t.Fatalf("expected first room name AMPHI-A, got %q", first.Name)
 	}
@@ -127,6 +130,9 @@ func TestInventorySource_LoadInventory_MapsGoogleResponseToBuildingsAndRooms(t *
 	second := snapshot.Rooms[1]
 	if second.Code != "LAB-204" {
 		t.Fatalf("expected second room code LAB-204, got %q", second.Code)
+	}
+	if second.ResourceEmail != "lab-204@example.org" {
+		t.Fatalf("expected second room resourceEmail lab-204@example.org, got %q", second.ResourceEmail)
 	}
 	if second.Type != "lab" {
 		t.Fatalf("expected second room type from resourceCategory fallback, got %q", second.Type)
@@ -176,6 +182,9 @@ func TestInventorySource_LoadInventory_TracksAdditionalResourceFieldsWhenPresent
 	room := snapshot.Rooms[0]
 	if room.Code != "LAB-ADV-01" {
 		t.Fatalf("expected code from generatedResourceName, got %q", room.Code)
+	}
+	if room.ResourceEmail != "lab-adv-01@example.org" {
+		t.Fatalf("expected resourceEmail from payload, got %q", room.ResourceEmail)
 	}
 	if room.Building != "B9" {
 		t.Fatalf("expected buildingId to be preserved, got %q", room.Building)
@@ -234,6 +243,9 @@ func TestInventorySource_LoadInventory_UsesEmailFallbackForCodeWhenNamesMissing(
 	}
 	if snapshot.Rooms[0].Code != "room-alpha" {
 		t.Fatalf("expected room code fallback from resourceEmail local part, got %q", snapshot.Rooms[0].Code)
+	}
+	if snapshot.Rooms[0].ResourceEmail != "room-alpha@example.org" {
+		t.Fatalf("expected room resourceEmail to be preserved, got %q", snapshot.Rooms[0].ResourceEmail)
 	}
 }
 

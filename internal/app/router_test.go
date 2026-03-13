@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"campus-room-status/internal/google/adminsdk"
+	gcalendar "campus-room-status/internal/google/calendar"
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,6 +55,45 @@ func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenServiceAccountJSONIsPre
 
 	if _, ok := source.(*adminsdk.InventorySource); !ok {
 		t.Fatalf("expected *adminsdk.InventorySource when GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", source)
+	}
+}
+
+func TestNewRuntimeCalendarClient_UsesStaticClientWhenTokenMissing(t *testing.T) {
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "")
+
+	client := newRuntimeCalendarClient()
+
+	if _, ok := client.(staticCalendarClient); !ok {
+		t.Fatalf("expected staticCalendarClient when no token provider is configured, got %T", client)
+	}
+}
+
+func TestNewRuntimeCalendarClient_UsesGoogleClientWhenTokenIsPresent(t *testing.T) {
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
+	t.Setenv("GOOGLE_CALENDAR_BASE_URL", "https://www.googleapis.com")
+	t.Setenv("GOOGLE_CALENDAR_TIMEOUT", "3s")
+	t.Setenv("GOOGLE_CALENDAR_PAGE_SIZE", "100")
+
+	client := newRuntimeCalendarClient()
+
+	if _, ok := client.(*gcalendar.Client); !ok {
+		t.Fatalf("expected *calendar.Client when GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", client)
+	}
+}
+
+func TestNewRuntimeCalendarClient_UsesGoogleClientWhenServiceAccountJSONIsPresent(t *testing.T) {
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", makeRouterTestServiceAccountJSON(t))
+	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "admin@example.org")
+
+	client := newRuntimeCalendarClient()
+
+	if _, ok := client.(*gcalendar.Client); !ok {
+		t.Fatalf("expected *calendar.Client when GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", client)
 	}
 }
 

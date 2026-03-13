@@ -314,6 +314,42 @@ func TestService_GetRoomSchedule_ReturnsRoomNotFoundForUnknownCode(t *testing.T)
 	}
 }
 
+func TestService_ListRooms_UsesResourceEmailForCalendarLookupWhenAvailable(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
+	clock := roomServiceTestClock{now: now}
+
+	inventory := fakeInventoryReader{
+		snapshot: domain.InventorySnapshot{
+			Rooms: []domain.Room{
+				{
+					Code:          "AMPHI-A",
+					ResourceEmail: "amphi-a@example.org",
+					Name:          "Amphitheater A",
+					Building:      "B1",
+					Capacity:      180,
+					Type:          "amphitheater",
+				},
+			},
+		},
+	}
+
+	eventsReader := &capturingRoomEventsReader{}
+	interpreter := domain.NewStatusInterpreter(clock, nil)
+	svc := NewService(inventory, eventsReader, interpreter, clock)
+
+	_, err := svc.ListRooms(context.Background(), domain.RoomFilters{})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(eventsReader.requestedKeys) != 1 {
+		t.Fatalf("expected one events lookup, got %d", len(eventsReader.requestedKeys))
+	}
+	if eventsReader.requestedKeys[0] != "amphi-a@example.org" {
+		t.Fatalf("expected events lookup by resourceEmail, got %q", eventsReader.requestedKeys[0])
+	}
+}
+
 type roomServiceTestClock struct {
 	now time.Time
 }
@@ -339,6 +375,15 @@ func (m mapRoomEventsReader) Get(_ context.Context, key domain.RoomEventsKey) ([
 	out := make([]domain.Event, len(events))
 	copy(out, events)
 	return out, nil
+}
+
+type capturingRoomEventsReader struct {
+	requestedKeys []string
+}
+
+func (r *capturingRoomEventsReader) Get(_ context.Context, key domain.RoomEventsKey) ([]domain.Event, error) {
+	r.requestedKeys = append(r.requestedKeys, key.RoomEmail)
+	return nil, nil
 }
 
 type allUnavailableSource struct {
