@@ -25,6 +25,7 @@ Mapped building fields:
 Mapped room fields:
 
 - `generatedResourceName` / `resourceName` / `resourceEmail` -> `domain.Room.Code` (with fallback priority in this order)
+- `resourceEmail` -> `domain.Room.ResourceEmail`
 - `resourceName` -> `domain.Room.Name`
 - `buildingId` -> `domain.Room.Building`
 - `floorName` (numeric) -> `domain.Room.Floor`

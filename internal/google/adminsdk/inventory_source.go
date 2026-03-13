@@ -287,13 +287,14 @@ func mapCalendarResource(resource *admin.CalendarResource) (domain.Room, []strin
 	resourceType := firstNonEmpty(resource.ResourceType, resource.ResourceCategory, "room")
 
 	return domain.Room{
-		Code:     code,
-		Name:     firstNonEmpty(resourceName, generatedResourceName, code),
-		Building: strings.TrimSpace(resource.BuildingId),
-		Floor:    floor,
-		Capacity: int(resource.Capacity),
-		Type:     resourceType,
-		Status:   "available",
+		Code:          code,
+		ResourceEmail: resourceEmail,
+		Name:          firstNonEmpty(resourceName, generatedResourceName, code),
+		Building:      strings.TrimSpace(resource.BuildingId),
+		Floor:         floor,
+		Capacity:      int(resource.Capacity),
+		Type:          resourceType,
+		Status:        "available",
 	}, observedFieldsFromResource(resource), true
 }
 

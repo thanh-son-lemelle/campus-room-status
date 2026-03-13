@@ -15,6 +15,7 @@ import (
 	"campus-room-status/internal/buildings"
 	"campus-room-status/internal/domain"
 	"campus-room-status/internal/google/adminsdk"
+	gcalendar "campus-room-status/internal/google/calendar"
 	"campus-room-status/internal/health"
 	"campus-room-status/internal/rooms"
 )
@@ -71,7 +72,7 @@ func newRuntimeServices() (domain.BuildingService, domain.RoomService, domain.He
 	}
 
 	eventsCache, err := domain.NewRoomEventsCache(
-		staticCalendarClient{},
+		newRuntimeCalendarClient(),
 		5*time.Minute,
 		nil,
 	)
@@ -107,6 +108,28 @@ func newRuntimeInventorySource() domain.InventorySource {
 	}
 
 	return source
+}
+
+func newRuntimeCalendarClient() domain.CalendarClient {
+	tokenProvider, ok := newRuntimeAdminTokenProvider()
+	if !ok {
+		return staticCalendarClient{}
+	}
+
+	client, err := gcalendar.NewClient(
+		nil,
+		tokenProvider,
+		gcalendar.ClientConfig{
+			BaseURL:  strings.TrimSpace(os.Getenv("GOOGLE_CALENDAR_BASE_URL")),
+			Timeout:  envDuration("GOOGLE_CALENDAR_TIMEOUT"),
+			PageSize: envInt("GOOGLE_CALENDAR_PAGE_SIZE"),
+		},
+	)
+	if err != nil {
+		return staticCalendarClient{}
+	}
+
+	return client
 }
 
 func newRuntimeAdminTokenProvider() (adminsdk.TokenProvider, bool) {

@@ -171,6 +171,9 @@ func (s *service) GetRoomSchedule(ctx context.Context, code string, start time.T
 }
 
 func roomEventLookupKey(room domain.Room) string {
+	if room.ResourceEmail != "" {
+		return room.ResourceEmail
+	}
 	if room.Code != "" {
 		return room.Code
 	}

@@ -28,15 +28,16 @@ type DirectoryRoom struct {
 }
 
 type Room struct {
-	Code         string
-	Name         string
-	Building     string
-	Floor        int
-	Capacity     int
-	Type         string
-	Status       string
-	CurrentEvent *Event
-	NextEvent    *Event
+	Code          string
+	ResourceEmail string
+	Name          string
+	Building      string
+	Floor         int
+	Capacity      int
+	Type          string
+	Status        string
+	CurrentEvent  *Event
+	NextEvent     *Event
 }
 
 type RoomFilters struct {
