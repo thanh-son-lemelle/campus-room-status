@@ -1,15 +1,61 @@
 package app
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"campus-room-status/internal/google/adminsdk"
 	"github.com/gin-gonic/gin"
 )
+
+func TestNewRuntimeInventorySource_UsesStaticSourceWhenTokenMissing(t *testing.T) {
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "")
+
+	source := newRuntimeInventorySource()
+
+	if _, ok := source.(staticInventorySource); !ok {
+		t.Fatalf("expected staticInventorySource when GOOGLE_ADMIN_BEARER_TOKEN is missing, got %T", source)
+	}
+}
+
+func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenTokenIsPresent(t *testing.T) {
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
+	t.Setenv("GOOGLE_ADMIN_BASE_URL", "https://admin.googleapis.com")
+	t.Setenv("GOOGLE_ADMIN_CUSTOMER", "my_customer")
+	t.Setenv("GOOGLE_ADMIN_TIMEOUT", "3s")
+	t.Setenv("GOOGLE_ADMIN_PAGE_SIZE", "50")
+
+	source := newRuntimeInventorySource()
+
+	if _, ok := source.(*adminsdk.InventorySource); !ok {
+		t.Fatalf("expected *adminsdk.InventorySource when GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", source)
+	}
+}
+
+func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenServiceAccountJSONIsPresent(t *testing.T) {
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", makeRouterTestServiceAccountJSON(t))
+	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "admin@example.org")
+
+	source := newRuntimeInventorySource()
+
+	if _, ok := source.(*adminsdk.InventorySource); !ok {
+		t.Fatalf("expected *adminsdk.InventorySource when GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", source)
+	}
+}
 
 func TestNewRouter_ExposesHealthAtAPIV1Path(t *testing.T) {
 	r := NewRouter()
@@ -298,4 +344,36 @@ func assertStandardErrorResponse(t *testing.T, body []byte) map[string]any {
 	}
 
 	return errObj
+}
+
+func makeRouterTestServiceAccountJSON(t *testing.T) string {
+	t.Helper()
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("generate RSA key: %v", err)
+	}
+
+	privateKeyDER, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		t.Fatalf("marshal private key: %v", err)
+	}
+
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyDER,
+	})
+
+	return fmt.Sprintf(`{
+		"type": "service_account",
+		"project_id": "test-project",
+		"private_key_id": "test-private-key-id",
+		"private_key": %q,
+		"client_email": "service-account@test-project.iam.gserviceaccount.com",
+		"client_id": "123456789012345678901",
+		"auth_uri": "https://accounts.google.com/o/oauth2/auth",
+		"token_uri": "https://oauth2.googleapis.com/token",
+		"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+		"client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/service-account%%40test-project.iam.gserviceaccount.com"
+	}`, string(privateKeyPEM))
 }
