@@ -374,7 +374,7 @@ func TestNewRouter_ExposesRoomScheduleAtAPIV1Path(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/api/v1/rooms/AMPHI-A/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		"/api/v1/rooms/AMPHI-A/schedule?start=2026-03-09&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()
@@ -462,7 +462,7 @@ func TestNewRouter_Error503UsesStandardFormat(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/api/v1/rooms/SVC-UNAVAILABLE/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		"/api/v1/rooms/SVC-UNAVAILABLE/schedule?start=2026-03-09&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()

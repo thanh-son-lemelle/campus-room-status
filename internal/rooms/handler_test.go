@@ -477,7 +477,7 @@ func TestScheduleHandler_ReturnsOK(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/rooms/AMPHI-A/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		"/rooms/AMPHI-A/schedule?start=2026-03-09&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()
@@ -495,8 +495,8 @@ func TestScheduleHandler_ReturnsExpectedContract(t *testing.T) {
 	r := gin.New()
 	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
-	start := "2026-03-09T08:00:00Z"
-	end := "2026-03-09T18:00:00Z"
+	start := "2026-03-09"
+	end := "2026-03-09"
 	req := httptest.NewRequest(
 		http.MethodGet,
 		"/rooms/AMPHI-A/schedule?start="+start+"&end="+end,
@@ -538,8 +538,8 @@ func TestScheduleHandler_ReturnsExpectedContract(t *testing.T) {
 	if startValue != start {
 		t.Fatalf("expected period.start %q, got %q", start, startValue)
 	}
-	if _, err := time.Parse(time.RFC3339, startValue); err != nil {
-		t.Fatalf("expected period.start to be RFC3339, got %q: %v", startValue, err)
+	if _, err := time.Parse(scheduleDateLayout, startValue); err != nil {
+		t.Fatalf("expected period.start to be YYYY-MM-DD, got %q: %v", startValue, err)
 	}
 
 	endValue, ok := period["end"].(string)
@@ -549,8 +549,8 @@ func TestScheduleHandler_ReturnsExpectedContract(t *testing.T) {
 	if endValue != end {
 		t.Fatalf("expected period.end %q, got %q", end, endValue)
 	}
-	if _, err := time.Parse(time.RFC3339, endValue); err != nil {
-		t.Fatalf("expected period.end to be RFC3339, got %q: %v", endValue, err)
+	if _, err := time.Parse(scheduleDateLayout, endValue); err != nil {
+		t.Fatalf("expected period.end to be YYYY-MM-DD, got %q: %v", endValue, err)
 	}
 
 	events, ok := payload["events"].([]any)
@@ -573,7 +573,7 @@ func TestScheduleHandler_ReturnsBadRequestWhenStartIsMissing(t *testing.T) {
 	r := gin.New()
 	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
-	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?end=2026-03-09T18:00:00Z", nil)
+	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?end=2026-03-09", nil)
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)
@@ -589,7 +589,7 @@ func TestScheduleHandler_ReturnsBadRequestWhenEndIsMissing(t *testing.T) {
 	r := gin.New()
 	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
-	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?start=2026-03-09T08:00:00Z", nil)
+	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?start=2026-03-09", nil)
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)
@@ -607,7 +607,7 @@ func TestScheduleHandler_ReturnsBadRequestWhenStartIsAfterEnd(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/rooms/AMPHI-A/schedule?start=2026-03-09T20:00:00Z&end=2026-03-09T18:00:00Z",
+		"/rooms/AMPHI-A/schedule?start=2026-03-10&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()
@@ -627,7 +627,7 @@ func TestScheduleHandler_ReturnsNotFoundForUnknownRoom(t *testing.T) {
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/rooms/UNKNOWN/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		"/rooms/UNKNOWN/schedule?start=2026-03-09&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()

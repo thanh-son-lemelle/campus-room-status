@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const scheduleDateLayout = "2006-01-02"
+
 // NewListHandler godoc
 // @Summary List rooms with current and next events
 // @Tags rooms
@@ -161,8 +163,8 @@ func (h *detailHandler) handle(c *gin.Context) {
 // @Tags rooms
 // @Produce json
 // @Param code path string true "Room code"
-// @Param start query string true "Start date-time (RFC3339)"
-// @Param end query string true "End date-time (RFC3339)"
+// @Param start query string true "Start date (YYYY-MM-DD)"
+// @Param end query string true "End date (YYYY-MM-DD)"
 // @Success 200 {object} api.RoomScheduleResponse
 // @Failure 400 {object} api.ErrorEnvelope
 // @Failure 404 {object} api.ErrorEnvelope
@@ -211,7 +213,7 @@ func (h *scheduleHandler) handle(c *gin.Context) {
 		return
 	}
 
-	start, err := time.Parse(time.RFC3339, startRaw)
+	startDate, err := time.Parse(scheduleDateLayout, startRaw)
 	if err != nil {
 		api.WriteError(c, &domain.InvalidParameterError{
 			Parameter: "start",
@@ -220,7 +222,7 @@ func (h *scheduleHandler) handle(c *gin.Context) {
 		return
 	}
 
-	end, err := time.Parse(time.RFC3339, endRaw)
+	endDate, err := time.Parse(scheduleDateLayout, endRaw)
 	if err != nil {
 		api.WriteError(c, &domain.InvalidParameterError{
 			Parameter: "end",
@@ -229,13 +231,16 @@ func (h *scheduleHandler) handle(c *gin.Context) {
 		return
 	}
 
-	if start.After(end) {
+	if startDate.After(endDate) {
 		api.WriteError(c, &domain.InvalidParameterError{
 			Parameter: "start",
 			Value:     startRaw,
 		})
 		return
 	}
+
+	start := startDate.UTC()
+	end := endDate.UTC().Add(24 * time.Hour)
 
 	events, err := h.service.GetRoomSchedule(c.Request.Context(), c.Param("code"), start, end)
 	if err != nil {
