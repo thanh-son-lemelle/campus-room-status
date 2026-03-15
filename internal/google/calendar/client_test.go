@@ -141,6 +141,53 @@ func TestClient_ListRoomEvents_MapsEventsListToDomainEvents(t *testing.T) {
 	}
 }
 
+func TestClient_ListRoomEvents_UsesReadableFallbacksWhenSummaryAndOrganizerAreMissing(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/calendar/v3/freeBusy":
+			_, _ = w.Write([]byte(`{
+				"calendars": {
+					"room@example.org": { "busy": [] }
+				}
+			}`))
+		case "/calendar/v3/calendars/room@example.org/events":
+			_, _ = w.Write([]byte(`{
+				"items": [{
+					"id": "opaque-event-id",
+					"start": {"dateTime": "2026-03-10T09:00:00Z"},
+					"end": {"dateTime": "2026-03-10T10:00:00Z"}
+				}]
+			}`))
+		default:
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestCalendarClient(t, &http.Client{}, ClientConfig{
+		BaseURL: server.URL,
+	})
+
+	start := time.Date(2026, time.March, 10, 8, 0, 0, 0, time.UTC)
+	end := time.Date(2026, time.March, 10, 18, 0, 0, 0, time.UTC)
+
+	events, err := client.ListRoomEvents(context.Background(), "room@example.org", start, end)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].Title != "Busy" {
+		t.Fatalf("expected title fallback Busy, got %q", events[0].Title)
+	}
+	if events[0].Organizer != "Google Calendar" {
+		t.Fatalf("expected organizer fallback Google Calendar, got %q", events[0].Organizer)
+	}
+}
+
 func TestClient_ListRoomEvents_HandlesPartialResponses(t *testing.T) {
 	t.Parallel()
 

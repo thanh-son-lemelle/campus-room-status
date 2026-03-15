@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 type RoomEventsKey struct {
@@ -38,6 +40,7 @@ type RoomEventsCache struct {
 	degraded                bool
 	lastCalendarErrorAt     *time.Time
 	lastSuccessfulRefreshAt *time.Time
+	inflight                singleflight.Group
 }
 
 type roomEventsCacheEntry struct {
@@ -83,41 +86,19 @@ func (c *RoomEventsCache) Get(ctx context.Context, key RoomEventsKey) ([]Event, 
 	}
 	c.mu.RUnlock()
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	now = c.clock.Now()
-	entry, ok = c.entries[mapKey]
-	if ok && entry.hasData && now.Before(entry.expiresAt) {
-		return cloneEvents(entry.events), nil
-	}
-
-	events, fetchErr := c.calendar.ListRoomEvents(ctx, normalizedKey.RoomEmail, normalizedKey.Start, normalizedKey.End)
+	result, fetchErr, _ := c.inflight.Do(mapKey, func() (any, error) {
+		return c.refresh(ctx, mapKey, normalizedKey)
+	})
 	if fetchErr != nil {
-		failedAt := now
-		c.degraded = true
-		c.lastCalendarErrorAt = &failedAt
-
-		if ok && entry.hasData {
-			return cloneEvents(entry.events), nil
-		}
 		return nil, fetchErr
 	}
 
-	refreshed := roomEventsCacheEntry{
-		events:      cloneEvents(events),
-		hasData:     true,
-		lastRefresh: now,
-		expiresAt:   now.Add(c.ttl),
+	events, ok := result.([]Event)
+	if !ok {
+		return nil, errors.New("unexpected room events cache result type")
 	}
-	c.entries[mapKey] = refreshed
 
-	c.degraded = false
-	c.lastCalendarErrorAt = nil
-	successAt := now
-	c.lastSuccessfulRefreshAt = &successAt
-
-	return cloneEvents(refreshed.events), nil
+	return cloneEvents(events), nil
 }
 
 func (c *RoomEventsCache) Metadata(key RoomEventsKey) RoomEventsCacheMetadata {
@@ -171,6 +152,56 @@ func (c *RoomEventsCache) Clear() {
 	c.degraded = false
 	c.lastCalendarErrorAt = nil
 	c.lastSuccessfulRefreshAt = nil
+}
+
+func (c *RoomEventsCache) refresh(ctx context.Context, mapKey string, key RoomEventsKey) ([]Event, error) {
+	now := c.clock.Now()
+
+	c.mu.RLock()
+	entry, ok := c.entries[mapKey]
+	if ok && entry.hasData && now.Before(entry.expiresAt) {
+		events := cloneEvents(entry.events)
+		c.mu.RUnlock()
+		return events, nil
+	}
+	c.mu.RUnlock()
+
+	events, fetchErr := c.calendar.ListRoomEvents(ctx, key.RoomEmail, key.Start, key.End)
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	now = c.clock.Now()
+	entry, ok = c.entries[mapKey]
+	if ok && entry.hasData && now.Before(entry.expiresAt) {
+		return cloneEvents(entry.events), nil
+	}
+
+	if fetchErr != nil {
+		failedAt := now
+		c.degraded = true
+		c.lastCalendarErrorAt = &failedAt
+
+		if ok && entry.hasData {
+			return cloneEvents(entry.events), nil
+		}
+		return nil, fetchErr
+	}
+
+	refreshed := roomEventsCacheEntry{
+		events:      cloneEvents(events),
+		hasData:     true,
+		lastRefresh: now,
+		expiresAt:   now.Add(c.ttl),
+	}
+	c.entries[mapKey] = refreshed
+
+	c.degraded = false
+	c.lastCalendarErrorAt = nil
+	successAt := now
+	c.lastSuccessfulRefreshAt = &successAt
+
+	return cloneEvents(refreshed.events), nil
 }
 
 func mapKeyFromRoomEventsKey(key RoomEventsKey) (string, RoomEventsKey, error) {

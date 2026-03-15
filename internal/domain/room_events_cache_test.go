@@ -95,6 +95,83 @@ func TestRoomEventsCache_RefreshesAfterExpiration(t *testing.T) {
 	}
 }
 
+func TestRoomEventsCache_DeduplicatesConcurrentRefreshByKey(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 15, 0, 0, 0, time.UTC)
+	ttl := 2 * time.Minute
+	clock := &eventsCacheFakeClock{now: now}
+	calendar := &eventsBlockingCalendarClient{
+		response: eventsFixture("Algorithms"),
+		started:  make(chan struct{}),
+		release:  make(chan struct{}),
+	}
+
+	cache, err := NewRoomEventsCache(calendar, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	key := RoomEventsKey{
+		RoomEmail: "amphi-a@example.org",
+		Start:     now,
+		End:       now.Add(time.Hour),
+	}
+
+	const workers = 20
+	start := make(chan struct{})
+	results := make(chan []Event, workers)
+	errs := make(chan error, workers)
+
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			events, getErr := cache.Get(context.Background(), key)
+			if getErr != nil {
+				errs <- getErr
+				return
+			}
+			results <- events
+		}()
+	}
+
+	close(start)
+
+	select {
+	case <-calendar.started:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("expected calendar call to start")
+	}
+	close(calendar.release)
+
+	wg.Wait()
+	close(errs)
+	close(results)
+
+	for getErr := range errs {
+		if getErr != nil {
+			t.Fatalf("expected no error from concurrent get, got %v", getErr)
+		}
+	}
+
+	if calendar.Calls() != 1 {
+		t.Fatalf("expected one calendar call for concurrent refresh, got %d", calendar.Calls())
+	}
+
+	received := 0
+	for events := range results {
+		received++
+		if len(events) != 1 || events[0].Title != "Algorithms" {
+			t.Fatalf("expected Algorithms payload, got %+v", events)
+		}
+	}
+
+	if received != workers {
+		t.Fatalf("expected %d successful responses, got %d", workers, received)
+	}
+}
+
 func TestRoomEventsCache_FallsBackToStaleWhenCalendarUnavailable(t *testing.T) {
 	now := time.Date(2026, time.March, 10, 16, 0, 0, 0, time.UTC)
 	ttl := time.Minute
@@ -336,6 +413,34 @@ func (c *eventsFakeCalendarClient) SetError(err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.err = err
+}
+
+type eventsBlockingCalendarClient struct {
+	mu          sync.Mutex
+	calls       int
+	response    []Event
+	startedOnce sync.Once
+	started     chan struct{}
+	release     chan struct{}
+}
+
+func (c *eventsBlockingCalendarClient) ListRoomEvents(context.Context, string, time.Time, time.Time) ([]Event, error) {
+	c.mu.Lock()
+	c.calls++
+	c.mu.Unlock()
+
+	c.startedOnce.Do(func() {
+		close(c.started)
+	})
+
+	<-c.release
+	return cloneEvents(c.response), nil
+}
+
+func (c *eventsBlockingCalendarClient) Calls() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.calls
 }
 
 func eventsFixture(title string) []Event {

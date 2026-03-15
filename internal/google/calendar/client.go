@@ -190,7 +190,8 @@ func (c *Client) listDetailedEvents(ctx context.Context, roomID string, start, e
 			TimeMax(end.Format(time.RFC3339)).
 			SingleEvents(true).
 			OrderBy("startTime").
-			MaxResults(c.pageSize)
+			MaxResults(c.pageSize).
+			AlwaysIncludeEmail(true)
 
 		if pageToken != "" {
 			if _, exists := visitedTokens[pageToken]; exists {
@@ -253,9 +254,20 @@ func mapCalendarEvent(item *gcalendar.Event) (domain.Event, bool) {
 	if item.Organizer != nil {
 		organizer = firstNonEmpty(item.Organizer.DisplayName, item.Organizer.Email)
 	}
+	if organizer == "" && item.Creator != nil {
+		organizer = firstNonEmpty(item.Creator.DisplayName, item.Creator.Email)
+	}
+	if organizer == "" {
+		organizer = "Google Calendar"
+	}
+
+	title := firstNonEmpty(item.Summary, item.Description)
+	if title == "" {
+		title = "Busy"
+	}
 
 	return domain.Event{
-		Title:     firstNonEmpty(item.Summary, item.Id, "Busy"),
+		Title:     title,
 		Start:     start,
 		End:       end,
 		Organizer: organizer,
