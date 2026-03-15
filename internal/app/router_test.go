@@ -9,16 +9,20 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"campus-room-status/internal/google/adminsdk"
 	gcalendar "campus-room-status/internal/google/calendar"
+	goauth "campus-room-status/internal/google/oauth"
 	"github.com/gin-gonic/gin"
 )
 
 func TestNewRuntimeInventorySource_UsesStaticSourceWhenTokenMissing(t *testing.T) {
+	clearOAuthEnv(t)
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
@@ -33,6 +37,7 @@ func TestNewRuntimeInventorySource_UsesStaticSourceWhenTokenMissing(t *testing.T
 }
 
 func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenTokenIsPresent(t *testing.T) {
+	clearOAuthEnv(t)
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
 	t.Setenv("GOOGLE_ADMIN_BASE_URL", "https://admin.googleapis.com")
 	t.Setenv("GOOGLE_ADMIN_CUSTOMER", "my_customer")
@@ -47,6 +52,7 @@ func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenTokenIsPresent(t *testi
 }
 
 func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenServiceAccountJSONIsPresent(t *testing.T) {
+	clearOAuthEnv(t)
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", makeRouterTestServiceAccountJSON(t))
 	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "admin@example.org")
@@ -59,6 +65,7 @@ func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenServiceAccountJSONIsPre
 }
 
 func TestNewRuntimeCalendarClient_UsesStaticClientWhenTokenMissing(t *testing.T) {
+	clearOAuthEnv(t)
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
@@ -73,6 +80,7 @@ func TestNewRuntimeCalendarClient_UsesStaticClientWhenTokenMissing(t *testing.T)
 }
 
 func TestNewRuntimeCalendarClient_UsesGoogleClientWhenTokenIsPresent(t *testing.T) {
+	clearOAuthEnv(t)
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
 	t.Setenv("GOOGLE_CALENDAR_BASE_URL", "https://www.googleapis.com")
 	t.Setenv("GOOGLE_CALENDAR_TIMEOUT", "3s")
@@ -86,6 +94,7 @@ func TestNewRuntimeCalendarClient_UsesGoogleClientWhenTokenIsPresent(t *testing.
 }
 
 func TestNewRuntimeCalendarClient_UsesGoogleClientWhenServiceAccountJSONIsPresent(t *testing.T) {
+	clearOAuthEnv(t)
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", makeRouterTestServiceAccountJSON(t))
 	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "admin@example.org")
@@ -94,6 +103,84 @@ func TestNewRuntimeCalendarClient_UsesGoogleClientWhenServiceAccountJSONIsPresen
 
 	if _, ok := client.(*gcalendar.Client); !ok {
 		t.Fatalf("expected *calendar.Client when GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", client)
+	}
+}
+
+func TestNewRuntimeOAuthTokenProvider_FailsWhenConfigMissing(t *testing.T) {
+	clearOAuthEnv(t)
+
+	provider, ok := newRuntimeOAuthTokenProvider()
+	if ok {
+		t.Fatalf("expected oauth provider loading to fail without required env, got %T", provider)
+	}
+}
+
+func TestNewRuntimeOAuthTokenProvider_LoadsWhenConfigAndRefreshTokenPresent(t *testing.T) {
+	clearOAuthEnv(t)
+
+	tokenFile := filepath.Join(t.TempDir(), "oauth-refresh.json")
+	store := goauth.NewFileRefreshTokenStore(tokenFile)
+	if err := store.Save(t.Context(), "stored-refresh-token"); err != nil {
+		t.Fatalf("seed refresh token file: %v", err)
+	}
+
+	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "client-id")
+	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "client-secret")
+	t.Setenv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8080/api/v1/auth/google/callback")
+	t.Setenv("GOOGLE_OAUTH_SCOPES", "scope-a,scope-b")
+	t.Setenv("GOOGLE_OAUTH_REFRESH_TOKEN_FILE", tokenFile)
+
+	provider, ok := newRuntimeOAuthTokenProvider()
+	if !ok {
+		t.Fatalf("expected oauth provider loading to succeed")
+	}
+	if _, typed := provider.(*goauth.TokenProvider); !typed {
+		t.Fatalf("expected *oauth.TokenProvider, got %T", provider)
+	}
+}
+
+func TestNewRuntimeOAuthTokenProvider_FailsWhenRefreshTokenIsMissing(t *testing.T) {
+	clearOAuthEnv(t)
+
+	tokenFile := filepath.Join(t.TempDir(), "oauth-refresh.json")
+
+	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "client-id")
+	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "client-secret")
+	t.Setenv("GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8080/api/v1/auth/google/callback")
+	t.Setenv("GOOGLE_OAUTH_SCOPES", "scope-a,scope-b")
+	t.Setenv("GOOGLE_OAUTH_REFRESH_TOKEN_FILE", tokenFile)
+
+	provider, ok := newRuntimeOAuthTokenProvider()
+	if ok {
+		t.Fatalf("expected oauth provider loading to fail without persisted refresh token, got %T", provider)
+	}
+}
+
+func TestNewRouter_ExposesGoogleOAuthStartPath(t *testing.T) {
+	clearOAuthEnv(t)
+	r := NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/google/start", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected /api/v1/auth/google/start to return %d when OAuth is not configured, got %d", http.StatusServiceUnavailable, w.Code)
+	}
+}
+
+func TestNewRouter_ExposesGoogleOAuthCallbackPath(t *testing.T) {
+	clearOAuthEnv(t)
+	r := NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/google/callback?state=test&code=test", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected /api/v1/auth/google/callback to return %d when OAuth is not configured, got %d", http.StatusServiceUnavailable, w.Code)
 	}
 }
 
@@ -416,4 +503,20 @@ func makeRouterTestServiceAccountJSON(t *testing.T) string {
 		"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
 		"client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/service-account%%40test-project.iam.gserviceaccount.com"
 	}`, string(privateKeyPEM))
+}
+
+func clearOAuthEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("GOOGLE_OAUTH_CLIENT_ID", "")
+	t.Setenv("GOOGLE_OAUTH_CLIENT_SECRET", "")
+	t.Setenv("GOOGLE_OAUTH_REDIRECT_URI", "")
+	t.Setenv("GOOGLE_OAUTH_SCOPES", "")
+	t.Setenv("GOOGLE_OAUTH_REFRESH_TOKEN_FILE", "")
+
+	// Ensure external shell state cannot interfere with tests.
+	_ = os.Unsetenv("GOOGLE_OAUTH_CLIENT_ID")
+	_ = os.Unsetenv("GOOGLE_OAUTH_CLIENT_SECRET")
+	_ = os.Unsetenv("GOOGLE_OAUTH_REDIRECT_URI")
+	_ = os.Unsetenv("GOOGLE_OAUTH_SCOPES")
+	_ = os.Unsetenv("GOOGLE_OAUTH_REFRESH_TOKEN_FILE")
 }

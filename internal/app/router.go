@@ -16,6 +16,7 @@ import (
 	"campus-room-status/internal/domain"
 	"campus-room-status/internal/google/adminsdk"
 	gcalendar "campus-room-status/internal/google/calendar"
+	goauth "campus-room-status/internal/google/oauth"
 	"campus-room-status/internal/health"
 	"campus-room-status/internal/rooms"
 )
@@ -49,8 +50,11 @@ func NewRouter() *gin.Engine {
 	})
 
 	buildingService, roomService, healthService := newRuntimeServices()
+	oauthFlow := newRuntimeOAuthFlow()
 
 	apiGroup := r.Group("/api/v1")
+	apiGroup.GET("/auth/google/start", goauth.NewStartHandler(oauthFlow))
+	apiGroup.GET("/auth/google/callback", goauth.NewCallbackHandler(oauthFlow))
 	apiGroup.GET("/buildings", buildings.NewHandler(buildingService, nil))
 	apiGroup.GET("/health", health.NewHandler(healthService))
 	apiGroup.GET("/rooms", rooms.NewListHandler(roomService, nil))
@@ -133,6 +137,10 @@ func newRuntimeCalendarClient() domain.CalendarClient {
 }
 
 func newRuntimeAdminTokenProvider() (adminsdk.TokenProvider, bool) {
+	if provider, ok := newRuntimeOAuthTokenProvider(); ok {
+		return provider, true
+	}
+
 	credentialsJSON, hasCredentials := readServiceAccountCredentials()
 	if hasCredentials {
 		provider, err := adminsdk.NewServiceAccountTokenProvider(adminsdk.ServiceAccountTokenProviderConfig{
@@ -150,6 +158,44 @@ func newRuntimeAdminTokenProvider() (adminsdk.TokenProvider, bool) {
 	}
 
 	return nil, false
+}
+
+func newRuntimeOAuthTokenProvider() (adminsdk.TokenProvider, bool) {
+	cfg, err := goauth.LoadConfigFromEnv()
+	if err != nil {
+		return nil, false
+	}
+
+	store := goauth.NewFileRefreshTokenStore(cfg.RefreshTokenFile)
+	refreshToken, err := store.Load(context.Background())
+	if err != nil {
+		return nil, false
+	}
+	if strings.TrimSpace(refreshToken) == "" {
+		return nil, false
+	}
+
+	provider, err := goauth.NewTokenProvider(cfg, store)
+	if err != nil {
+		return nil, false
+	}
+
+	return provider, true
+}
+
+func newRuntimeOAuthFlow() *goauth.AuthorizationFlow {
+	cfg, err := goauth.LoadConfigFromEnv()
+	if err != nil {
+		return nil
+	}
+
+	store := goauth.NewFileRefreshTokenStore(cfg.RefreshTokenFile)
+	flow, err := goauth.NewAuthorizationFlow(cfg, store)
+	if err != nil {
+		return nil
+	}
+
+	return flow
 }
 
 func readServiceAccountCredentials() ([]byte, bool) {
