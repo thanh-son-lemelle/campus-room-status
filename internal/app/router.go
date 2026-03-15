@@ -24,6 +24,13 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+type runtimeDataSource string
+
+const (
+	runtimeDataSourceStatic runtimeDataSource = "static"
+	runtimeDataSourceGoogle runtimeDataSource = "google"
+)
+
 // NewRouter godoc
 // @Summary Get Swagger specification
 // @Tags docs
@@ -106,6 +113,10 @@ func newRuntimeServices() (domain.BuildingService, domain.RoomService, domain.He
 }
 
 func newRuntimeInventorySource() domain.InventorySource {
+	if runtimeDataSourceFromEnv() != runtimeDataSourceGoogle {
+		return staticInventorySource{}
+	}
+
 	tokenProvider, ok := newRuntimeAdminTokenProvider()
 	if !ok {
 		return staticInventorySource{}
@@ -129,6 +140,10 @@ func newRuntimeInventorySource() domain.InventorySource {
 }
 
 func newRuntimeCalendarClient() domain.CalendarClient {
+	if runtimeDataSourceFromEnv() != runtimeDataSourceGoogle {
+		return staticCalendarClient{}
+	}
+
 	tokenProvider, ok := newRuntimeAdminTokenProvider()
 	if !ok {
 		return staticCalendarClient{}
@@ -237,6 +252,15 @@ func readServiceAccountCredentials() ([]byte, bool) {
 	}
 
 	return credentialsJSON, true
+}
+
+func runtimeDataSourceFromEnv() runtimeDataSource {
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("DATA_SOURCE")))
+	if raw == string(runtimeDataSourceGoogle) {
+		return runtimeDataSourceGoogle
+	}
+
+	return runtimeDataSourceStatic
 }
 
 func envInt(name string) int {

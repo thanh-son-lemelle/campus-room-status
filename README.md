@@ -11,6 +11,7 @@ Ce projet supporte un flux OAuth serveur pour obtenir un `refresh_token` Google 
 
 Copier `.env.example` puis renseigner:
 
+- `DATA_SOURCE` (`static` par défaut, `google` pour activer les APIs Google)
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - `GOOGLE_OAUTH_REDIRECT_URI`
@@ -54,7 +55,7 @@ Si les appels Google échouent avec un message lié au refresh token (`invalid`,
 
 ## Compatibilité existante
 
-Si la config OAuth n'est pas disponible, le runtime conserve les options déjà présentes:
+Quand `DATA_SOURCE=google`, le runtime utilise les options d'auth Google suivantes:
 
 - service account (`GOOGLE_SERVICE_ACCOUNT_JSON`, `..._BASE64`, `..._FILE`)
 - bearer token statique (`GOOGLE_ADMIN_BEARER_TOKEN`)

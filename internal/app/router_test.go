@@ -21,23 +21,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestNewRuntimeInventorySource_UsesStaticSourceWhenTokenMissing(t *testing.T) {
+func TestNewRuntimeInventorySource_UsesStaticSourceByDefault(t *testing.T) {
 	clearOAuthEnv(t)
-	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
-	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
-	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
-	t.Setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
-	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "")
+	clearDataSourceEnv(t)
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
 
 	source := newRuntimeInventorySource()
 
 	if _, ok := source.(staticInventorySource); !ok {
-		t.Fatalf("expected staticInventorySource when GOOGLE_ADMIN_BEARER_TOKEN is missing, got %T", source)
+		t.Fatalf("expected staticInventorySource by default, got %T", source)
 	}
 }
 
-func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenTokenIsPresent(t *testing.T) {
+func TestNewRuntimeInventorySource_UsesStaticSourceWhenConfigured(t *testing.T) {
 	clearOAuthEnv(t)
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
+	t.Setenv("DATA_SOURCE", "static")
+
+	source := newRuntimeInventorySource()
+
+	if _, ok := source.(staticInventorySource); !ok {
+		t.Fatalf("expected staticInventorySource when DATA_SOURCE=static, got %T", source)
+	}
+}
+
+func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenGoogleSourceAndTokenPresent(t *testing.T) {
+	clearOAuthEnv(t)
+	t.Setenv("DATA_SOURCE", "google")
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
 	t.Setenv("GOOGLE_ADMIN_BASE_URL", "https://admin.googleapis.com")
 	t.Setenv("GOOGLE_ADMIN_CUSTOMER", "my_customer")
@@ -47,12 +57,13 @@ func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenTokenIsPresent(t *testi
 	source := newRuntimeInventorySource()
 
 	if _, ok := source.(*adminsdk.InventorySource); !ok {
-		t.Fatalf("expected *adminsdk.InventorySource when GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", source)
+		t.Fatalf("expected *adminsdk.InventorySource when DATA_SOURCE=google and GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", source)
 	}
 }
 
-func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenServiceAccountJSONIsPresent(t *testing.T) {
+func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenGoogleSourceAndServiceAccountJSONIsPresent(t *testing.T) {
 	clearOAuthEnv(t)
+	t.Setenv("DATA_SOURCE", "google")
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", makeRouterTestServiceAccountJSON(t))
 	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "admin@example.org")
@@ -60,27 +71,37 @@ func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenServiceAccountJSONIsPre
 	source := newRuntimeInventorySource()
 
 	if _, ok := source.(*adminsdk.InventorySource); !ok {
-		t.Fatalf("expected *adminsdk.InventorySource when GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", source)
+		t.Fatalf("expected *adminsdk.InventorySource when DATA_SOURCE=google and GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", source)
 	}
 }
 
-func TestNewRuntimeCalendarClient_UsesStaticClientWhenTokenMissing(t *testing.T) {
+func TestNewRuntimeCalendarClient_UsesStaticClientByDefault(t *testing.T) {
 	clearOAuthEnv(t)
-	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
-	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
-	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
-	t.Setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
-	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "")
+	clearDataSourceEnv(t)
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
 
 	client := newRuntimeCalendarClient()
 
 	if _, ok := client.(staticCalendarClient); !ok {
-		t.Fatalf("expected staticCalendarClient when no token provider is configured, got %T", client)
+		t.Fatalf("expected staticCalendarClient by default, got %T", client)
 	}
 }
 
-func TestNewRuntimeCalendarClient_UsesGoogleClientWhenTokenIsPresent(t *testing.T) {
+func TestNewRuntimeCalendarClient_UsesStaticClientWhenConfigured(t *testing.T) {
 	clearOAuthEnv(t)
+	t.Setenv("DATA_SOURCE", "static")
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
+
+	client := newRuntimeCalendarClient()
+
+	if _, ok := client.(staticCalendarClient); !ok {
+		t.Fatalf("expected staticCalendarClient when DATA_SOURCE=static, got %T", client)
+	}
+}
+
+func TestNewRuntimeCalendarClient_UsesGoogleClientWhenGoogleSourceAndTokenPresent(t *testing.T) {
+	clearOAuthEnv(t)
+	t.Setenv("DATA_SOURCE", "google")
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "test-token")
 	t.Setenv("GOOGLE_CALENDAR_BASE_URL", "https://www.googleapis.com")
 	t.Setenv("GOOGLE_CALENDAR_TIMEOUT", "3s")
@@ -89,12 +110,13 @@ func TestNewRuntimeCalendarClient_UsesGoogleClientWhenTokenIsPresent(t *testing.
 	client := newRuntimeCalendarClient()
 
 	if _, ok := client.(*gcalendar.Client); !ok {
-		t.Fatalf("expected *calendar.Client when GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", client)
+		t.Fatalf("expected *calendar.Client when DATA_SOURCE=google and GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", client)
 	}
 }
 
-func TestNewRuntimeCalendarClient_UsesGoogleClientWhenServiceAccountJSONIsPresent(t *testing.T) {
+func TestNewRuntimeCalendarClient_UsesGoogleClientWhenGoogleSourceAndServiceAccountJSONIsPresent(t *testing.T) {
 	clearOAuthEnv(t)
+	t.Setenv("DATA_SOURCE", "google")
 	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
 	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", makeRouterTestServiceAccountJSON(t))
 	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "admin@example.org")
@@ -102,7 +124,7 @@ func TestNewRuntimeCalendarClient_UsesGoogleClientWhenServiceAccountJSONIsPresen
 	client := newRuntimeCalendarClient()
 
 	if _, ok := client.(*gcalendar.Client); !ok {
-		t.Fatalf("expected *calendar.Client when GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", client)
+		t.Fatalf("expected *calendar.Client when DATA_SOURCE=google and GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", client)
 	}
 }
 
@@ -558,6 +580,7 @@ func clearOAuthEnv(t *testing.T) {
 	t.Setenv("GOOGLE_OAUTH_REDIRECT_URI", "")
 	t.Setenv("GOOGLE_OAUTH_SCOPES", "")
 	t.Setenv("GOOGLE_OAUTH_REFRESH_TOKEN_FILE", "")
+	t.Setenv("DATA_SOURCE", "")
 
 	// Ensure external shell state cannot interfere with tests.
 	_ = os.Unsetenv("GOOGLE_OAUTH_CLIENT_ID")
@@ -565,4 +588,11 @@ func clearOAuthEnv(t *testing.T) {
 	_ = os.Unsetenv("GOOGLE_OAUTH_REDIRECT_URI")
 	_ = os.Unsetenv("GOOGLE_OAUTH_SCOPES")
 	_ = os.Unsetenv("GOOGLE_OAUTH_REFRESH_TOKEN_FILE")
+	_ = os.Unsetenv("DATA_SOURCE")
+}
+
+func clearDataSourceEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("DATA_SOURCE", "")
+	_ = os.Unsetenv("DATA_SOURCE")
 }
