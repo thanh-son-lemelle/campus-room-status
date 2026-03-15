@@ -187,6 +187,7 @@ func (h *detailHandler) handle(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.RoomDetailResponse{
 		Code:          room.Code,
+		ResourceEmail: room.ResourceEmail,
 		Name:          room.Name,
 		Building:      room.Building,
 		Floor:         room.Floor,
@@ -374,29 +375,31 @@ func parseListFilters(c *gin.Context) (domain.RoomFilters, map[string]any, error
 
 func apiRoomToDomainRoom(room api.RoomResponse) domain.Room {
 	return domain.Room{
-		Code:         room.Code,
-		Name:         room.Name,
-		Building:     room.Building,
-		Floor:        room.Floor,
-		Capacity:     room.Capacity,
-		Type:         room.Type,
-		Status:       room.Status,
-		CurrentEvent: apiEventToDomainEvent(room.CurrentEvent),
-		NextEvent:    apiEventToDomainEvent(room.NextEvent),
+		Code:          room.Code,
+		ResourceEmail: room.ResourceEmail,
+		Name:          room.Name,
+		Building:      room.Building,
+		Floor:         room.Floor,
+		Capacity:      room.Capacity,
+		Type:          room.Type,
+		Status:        room.Status,
+		CurrentEvent:  apiEventToDomainEvent(room.CurrentEvent),
+		NextEvent:     apiEventToDomainEvent(room.NextEvent),
 	}
 }
 
 func domainRoomToAPIRoom(room domain.Room) api.RoomResponse {
 	return api.RoomResponse{
-		Code:         room.Code,
-		Name:         room.Name,
-		Building:     room.Building,
-		Floor:        room.Floor,
-		Capacity:     room.Capacity,
-		Type:         room.Type,
-		Status:       room.Status,
-		CurrentEvent: domainEventToAPIEvent(room.CurrentEvent),
-		NextEvent:    domainEventToAPIEvent(room.NextEvent),
+		Code:          room.Code,
+		ResourceEmail: room.ResourceEmail,
+		Name:          room.Name,
+		Building:      room.Building,
+		Floor:         room.Floor,
+		Capacity:      room.Capacity,
+		Type:          room.Type,
+		Status:        room.Status,
+		CurrentEvent:  domainEventToAPIEvent(room.CurrentEvent),
+		NextEvent:     domainEventToAPIEvent(room.NextEvent),
 	}
 }
 

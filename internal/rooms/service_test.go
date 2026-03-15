@@ -2,6 +2,8 @@ package rooms
 
 import (
 	"context"
+	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -350,6 +352,64 @@ func TestService_ListRooms_UsesResourceEmailForCalendarLookupWhenAvailable(t *te
 	}
 }
 
+func TestService_ListRooms_ReturnsInvalidParameterWhenStatusFilterIsInvalid(t *testing.T) {
+	svc := NewService(
+		panicInventoryReader{},
+		panicEventsReader{},
+		nil,
+		nil,
+	)
+
+	_, err := svc.ListRooms(context.Background(), domain.RoomFilters{
+		Status: strPtr("unavailble"),
+	})
+	if err == nil {
+		t.Fatalf("expected invalid status error")
+	}
+
+	invalidParamErr, ok := err.(*domain.InvalidParameterError)
+	if !ok {
+		t.Fatalf("expected InvalidParameterError, got %T", err)
+	}
+	if invalidParamErr.Parameter != "status" {
+		t.Fatalf("expected invalid parameter 'status', got %q", invalidParamErr.Parameter)
+	}
+}
+
+func TestService_ListRooms_PrefiltersBeforeCalendarFetch(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
+	clock := roomServiceTestClock{now: now}
+
+	inventory := fakeInventoryReader{
+		snapshot: domain.InventorySnapshot{
+			Rooms: []domain.Room{
+				{Code: "R1", ResourceEmail: "r1@example.org", Building: "B1", Type: "lab", Capacity: 20},
+				{Code: "R2", ResourceEmail: "r2@example.org", Building: "B1", Type: "lab", Capacity: 40},
+				{Code: "R3", ResourceEmail: "r3@example.org", Building: "B2", Type: "lab", Capacity: 50},
+			},
+		},
+	}
+	eventsReader := &capturingRoomEventsReader{}
+	svc := NewService(inventory, eventsReader, nil, clock)
+
+	_, err := svc.ListRooms(context.Background(), domain.RoomFilters{
+		Building: strPtr("B1"),
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(eventsReader.requestedKeys) != 2 {
+		t.Fatalf("expected 2 calendar fetches after prefilter, got %d", len(eventsReader.requestedKeys))
+	}
+	if !slices.Contains(eventsReader.requestedKeys, "r1@example.org") {
+		t.Fatalf("expected fetch for r1@example.org, got %v", eventsReader.requestedKeys)
+	}
+	if !slices.Contains(eventsReader.requestedKeys, "r2@example.org") {
+		t.Fatalf("expected fetch for r2@example.org, got %v", eventsReader.requestedKeys)
+	}
+}
+
 type roomServiceTestClock struct {
 	now time.Time
 }
@@ -378,12 +438,27 @@ func (m mapRoomEventsReader) Get(_ context.Context, key domain.RoomEventsKey) ([
 }
 
 type capturingRoomEventsReader struct {
+	mu            sync.Mutex
 	requestedKeys []string
 }
 
 func (r *capturingRoomEventsReader) Get(_ context.Context, key domain.RoomEventsKey) ([]domain.Event, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.requestedKeys = append(r.requestedKeys, key.RoomEmail)
 	return nil, nil
+}
+
+type panicInventoryReader struct{}
+
+func (panicInventoryReader) GetInventory(context.Context) (domain.InventorySnapshot, error) {
+	panic("inventory should not be called")
+}
+
+type panicEventsReader struct{}
+
+func (panicEventsReader) Get(context.Context, domain.RoomEventsKey) ([]domain.Event, error) {
+	panic("events reader should not be called")
 }
 
 type allUnavailableSource struct {
