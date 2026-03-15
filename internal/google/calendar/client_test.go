@@ -191,6 +191,50 @@ func TestClient_ListRoomEvents_HandlesPartialResponses(t *testing.T) {
 	}
 }
 
+func TestClient_ListRoomEvents_FallsBackToFreeBusyWhenEventsListIsForbidden(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/calendar/v3/freeBusy":
+			_, _ = w.Write([]byte(`{
+				"calendars": {
+					"room@example.org": {
+						"busy": [{
+							"start": "2026-03-10T09:00:00Z",
+							"end": "2026-03-10T10:30:00Z"
+						}]
+					}
+				}
+			}`))
+		case "/calendar/v3/calendars/room@example.org/events":
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":{"code":403,"message":"insufficient permissions"}}`))
+		default:
+			t.Fatalf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	client := newTestCalendarClient(t, &http.Client{}, ClientConfig{
+		BaseURL: server.URL,
+	})
+
+	start := time.Date(2026, time.March, 10, 8, 0, 0, 0, time.UTC)
+	end := time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC)
+
+	events, err := client.ListRoomEvents(context.Background(), "room@example.org", start, end)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected busy fallback event, got %d", len(events))
+	}
+	if events[0].Title != "Busy" {
+		t.Fatalf("expected busy fallback title, got %q", events[0].Title)
+	}
+}
+
 func TestClient_ListRoomEvents_ReturnsErrorOnRateLimit(t *testing.T) {
 	t.Parallel()
 

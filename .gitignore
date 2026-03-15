@@ -38,3 +38,5 @@ Thumbs.db
 # Editor/IDE
 .idea/
 .vscode/
+
+.secrets/

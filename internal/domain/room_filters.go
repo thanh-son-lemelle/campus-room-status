@@ -78,6 +78,17 @@ func FilterAndSortRooms(rooms []Room, filters RoomFilters) ([]Room, error) {
 }
 
 func ValidateRoomFilters(filters RoomFilters) error {
+	status := normalizedStringPointer(filters.Status)
+	if status != "" &&
+		status != RoomStatusAvailable &&
+		status != RoomStatusOccupied &&
+		status != RoomStatusUpcoming &&
+		status != RoomStatusMaintenance {
+		return &InvalidParameterError{
+			Parameter: "status",
+		}
+	}
+
 	if filters.CapacityMin != nil && filters.CapacityMax != nil && *filters.CapacityMin > *filters.CapacityMax {
 		return &InvalidParameterError{
 			Parameter: "capacity_min",
