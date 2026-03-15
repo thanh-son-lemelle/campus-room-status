@@ -239,7 +239,7 @@ func mapBuilding(building *admin.Building) (domain.Building, bool) {
 	}
 
 	name := firstNonEmpty(building.BuildingName, id)
-	floors := parseNumericFloors(building.FloorNames)
+	floors := normalizeFloorNames(building.FloorNames)
 	address := mapBuildingAddress(building.Address)
 
 	return domain.Building{
@@ -341,14 +341,30 @@ func deriveBuildingsFromRooms(rooms []domain.Room) []domain.Building {
 			byID[room.Building] = building
 		}
 
-		if room.Floor != 0 && !slicesContainsInt(building.Floors, room.Floor) {
-			building.Floors = append(building.Floors, room.Floor)
+		if room.Floor != 0 {
+			floor := strconv.Itoa(room.Floor)
+			if !slicesContainsString(building.Floors, floor) {
+				building.Floors = append(building.Floors, floor)
+			}
 		}
 	}
 
 	buildings := make([]domain.Building, 0, len(byID))
 	for _, building := range byID {
-		sort.Ints(building.Floors)
+		sort.SliceStable(building.Floors, func(i, j int) bool {
+			left, leftErr := strconv.Atoi(building.Floors[i])
+			right, rightErr := strconv.Atoi(building.Floors[j])
+			if leftErr == nil && rightErr == nil {
+				return left < right
+			}
+			if leftErr == nil {
+				return true
+			}
+			if rightErr == nil {
+				return false
+			}
+			return building.Floors[i] < building.Floors[j]
+		})
 		buildings = append(buildings, *building)
 	}
 	sort.SliceStable(buildings, func(i, j int) bool {
@@ -358,22 +374,22 @@ func deriveBuildingsFromRooms(rooms []domain.Room) []domain.Building {
 	return buildings
 }
 
-func parseNumericFloors(floorNames []string) []int {
+func normalizeFloorNames(floorNames []string) []string {
 	if len(floorNames) == 0 {
 		return nil
 	}
 
-	floors := make([]int, 0, len(floorNames))
+	floors := make([]string, 0, len(floorNames))
 	for _, floorName := range floorNames {
-		value, err := strconv.Atoi(strings.TrimSpace(floorName))
-		if err != nil {
+		value := strings.TrimSpace(floorName)
+		if value == "" {
 			continue
 		}
-		if !slicesContainsInt(floors, value) {
+		if !slicesContainsString(floors, value) {
 			floors = append(floors, value)
 		}
 	}
-	sort.Ints(floors)
+
 	return floors
 }
 
@@ -438,7 +454,7 @@ func hasAnyValue(value any) bool {
 	}
 }
 
-func slicesContainsInt(values []int, target int) bool {
+func slicesContainsString(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
 			return true

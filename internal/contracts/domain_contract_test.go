@@ -13,7 +13,7 @@ func TestDomainContract_Models(t *testing.T) {
 		"ID":      "string",
 		"Name":    "string",
 		"Address": "string",
-		"Floors":  "[]int",
+		"Floors":  "[]string",
 	})
 
 	requireStructFields(t, pkg, "Event", map[string]string{

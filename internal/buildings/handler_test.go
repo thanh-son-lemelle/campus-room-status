@@ -99,8 +99,8 @@ func TestHandler_ReturnsTimestampAndBuildings(t *testing.T) {
 		}
 
 		for j, floor := range floors {
-			if _, ok := floor.(float64); !ok {
-				t.Fatalf("expected buildings[%d].floors[%d] to be numeric, got %T", i, j, floor)
+			if _, ok := floor.(string); !ok {
+				t.Fatalf("expected buildings[%d].floors[%d] to be a string, got %T", i, j, floor)
 			}
 		}
 	}

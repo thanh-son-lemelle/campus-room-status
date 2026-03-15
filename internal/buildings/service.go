@@ -45,7 +45,7 @@ func cloneBuildings(buildings []domain.Building) []domain.Building {
 			ID:      buildings[i].ID,
 			Name:    buildings[i].Name,
 			Address: buildings[i].Address,
-			Floors:  append([]int(nil), buildings[i].Floors...),
+			Floors:  append([]string(nil), buildings[i].Floors...),
 		}
 	}
 

@@ -73,7 +73,7 @@ func mapDomainBuildingsToResponse(buildings []domain.Building) []api.BuildingRes
 			ID:      buildings[i].ID,
 			Name:    buildings[i].Name,
 			Address: buildings[i].Address,
-			Floors:  append([]int(nil), buildings[i].Floors...),
+			Floors:  append([]string(nil), buildings[i].Floors...),
 		}
 	}
 

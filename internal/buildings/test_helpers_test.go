@@ -10,6 +10,6 @@ func domainBuildingFromMock(building mockdata.Building) domain.Building {
 		ID:      building.ID,
 		Name:    building.Name,
 		Address: building.Address,
-		Floors:  append([]int(nil), building.Floors...),
+		Floors:  append([]string(nil), building.Floors...),
 	}
 }

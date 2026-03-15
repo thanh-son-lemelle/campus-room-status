@@ -96,8 +96,8 @@ func TestInventorySource_LoadInventory_MapsGoogleResponseToBuildingsAndRooms(t *
 	if building.Address == "" {
 		t.Fatalf("expected building address to be mapped")
 	}
-	if !reflect.DeepEqual(building.Floors, []int{0, 1}) {
-		t.Fatalf("expected parsed floors [0 1], got %v", building.Floors)
+	if !reflect.DeepEqual(building.Floors, []string{"0", "1", "RDC"}) {
+		t.Fatalf("expected parsed floors [0 1 RDC], got %v", building.Floors)
 	}
 
 	if len(snapshot.Rooms) != 2 {

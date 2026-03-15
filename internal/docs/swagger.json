@@ -336,7 +336,7 @@
                 "floors": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string"
                     }
                 },
                 "id": {

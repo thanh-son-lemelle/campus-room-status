@@ -192,7 +192,7 @@ func cloneSnapshot(src InventorySnapshot) InventorySnapshot {
 		for i := range src.Buildings {
 			out.Buildings[i] = src.Buildings[i]
 			if src.Buildings[i].Floors != nil {
-				out.Buildings[i].Floors = append([]int(nil), src.Buildings[i].Floors...)
+				out.Buildings[i].Floors = append([]string(nil), src.Buildings[i].Floors...)
 			}
 		}
 	}

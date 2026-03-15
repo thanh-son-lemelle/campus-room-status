@@ -3,10 +3,10 @@ package api
 import "time"
 
 type BuildingResponse struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Address string `json:"address"`
-	Floors  []int  `json:"floors"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Address string   `json:"address"`
+	Floors  []string `json:"floors"`
 }
 
 type BuildingsResponse struct {
