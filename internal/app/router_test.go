@@ -170,6 +170,52 @@ func TestNewRouter_ExposesGoogleOAuthStartPath(t *testing.T) {
 	}
 }
 
+func TestNewRouter_ExposesOpenAPIDocPath(t *testing.T) {
+	r := NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/docs/openapi.json", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected /api/v1/docs/openapi.json to return %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON OpenAPI body, got error: %v", err)
+	}
+
+	version, ok := payload["openapi"].(string)
+	if !ok {
+		version, ok = payload["swagger"].(string)
+	}
+	if !ok {
+		t.Fatalf("expected swagger/openapi version field in doc response")
+	}
+	if version != "2.0" {
+		t.Fatalf("expected Swagger version 2.0, got %q", version)
+	}
+}
+
+func TestNewRouter_ExposesSwaggerUIPath(t *testing.T) {
+	r := NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/docs/swagger/index.html", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected /api/v1/docs/swagger/index.html to return %d, got %d", http.StatusOK, w.Code)
+	}
+
+	if !strings.Contains(strings.ToLower(w.Body.String()), "swagger") {
+		t.Fatalf("expected swagger UI HTML response body")
+	}
+}
+
 func TestNewRouter_ExposesGoogleOAuthCallbackPath(t *testing.T) {
 	clearOAuthEnv(t)
 	r := NewRouter()

@@ -8,6 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// NewStartHandler godoc
+// @Summary Start Google OAuth consent flow
+// @Tags auth
+// @Produce json
+// @Success 302 {string} string "Redirect to Google consent screen"
+// @Failure 503 {object} api.ErrorEnvelope
+// @Router /api/v1/auth/google/start [get]
 func NewStartHandler(flow *AuthorizationFlow) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if flow == nil {
@@ -33,6 +40,16 @@ func NewStartHandler(flow *AuthorizationFlow) gin.HandlerFunc {
 	}
 }
 
+// NewCallbackHandler godoc
+// @Summary Handle Google OAuth callback
+// @Tags auth
+// @Produce json
+// @Param state query string true "OAuth state"
+// @Param code query string true "OAuth authorization code"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} api.ErrorEnvelope
+// @Failure 503 {object} api.ErrorEnvelope
+// @Router /api/v1/auth/google/callback [get]
 func NewCallbackHandler(flow *AuthorizationFlow) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if flow == nil {

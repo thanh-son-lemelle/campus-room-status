@@ -58,3 +58,27 @@ Si la config OAuth n'est pas disponible, le runtime conserve les options déjà 
 
 - service account (`GOOGLE_SERVICE_ACCOUNT_JSON`, `..._BASE64`, `..._FILE`)
 - bearer token statique (`GOOGLE_ADMIN_BEARER_TOKEN`)
+
+## Documentation API (Swagger/OpenAPI)
+
+La spécification Swagger 2.0 générée est exposée par l'API:
+
+- `GET /api/v1/docs/openapi.json`
+- exemple local: `http://localhost:8080/api/v1/docs/openapi.json`
+
+Une interface Swagger UI est aussi exposée:
+
+- `GET /api/v1/docs/swagger/index.html`
+- exemple local: `http://localhost:8080/api/v1/docs/swagger/index.html`
+
+Elle couvre les endpoints obligatoires:
+
+- `GET /api/v1/health`
+- `GET /api/v1/buildings`
+- `GET /api/v1/rooms`
+- `GET /api/v1/rooms/{code}`
+- `GET /api/v1/rooms/{code}/schedule`
+
+Regeneration de la spec:
+
+- `go generate ./internal/docs`

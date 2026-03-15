@@ -13,14 +13,23 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"campus-room-status/internal/buildings"
+	"campus-room-status/internal/docs"
 	"campus-room-status/internal/domain"
 	"campus-room-status/internal/google/adminsdk"
 	gcalendar "campus-room-status/internal/google/calendar"
 	goauth "campus-room-status/internal/google/oauth"
 	"campus-room-status/internal/health"
 	"campus-room-status/internal/rooms"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// NewRouter godoc
+// @Summary Get Swagger specification
+// @Tags docs
+// @Produce json
+// @Success 200 {string} string "Swagger JSON document"
+// @Router /api/v1/docs/openapi.json [get]
 func NewRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
@@ -53,6 +62,11 @@ func NewRouter() *gin.Engine {
 	oauthFlow := newRuntimeOAuthFlow()
 
 	apiGroup := r.Group("/api/v1")
+	apiGroup.GET("/docs/openapi.json", docs.NewOpenAPIHandler())
+	apiGroup.GET("/docs/swagger/*any", ginSwagger.WrapHandler(
+		swaggerFiles.Handler,
+		ginSwagger.URL("/api/v1/docs/openapi.json"),
+	))
 	apiGroup.GET("/auth/google/start", goauth.NewStartHandler(oauthFlow))
 	apiGroup.GET("/auth/google/callback", goauth.NewCallbackHandler(oauthFlow))
 	apiGroup.GET("/buildings", buildings.NewHandler(buildingService, nil))
