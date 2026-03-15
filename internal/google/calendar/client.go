@@ -11,6 +11,7 @@ import (
 
 	"campus-room-status/internal/domain"
 	gcalendar "google.golang.org/api/calendar/v3"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
@@ -91,10 +92,22 @@ func (c *Client) ListRoomEvents(ctx context.Context, resourceEmail string, start
 
 	events, err := c.listDetailedEvents(ctx, roomID, start, end)
 	if err != nil {
+		if isRecoverableEventsListError(err) {
+			return mergeBusyAndDetailedEvents(busyIntervals, nil), nil
+		}
 		return nil, fmt.Errorf("events list request failed: %w", err)
 	}
 
 	return mergeBusyAndDetailedEvents(busyIntervals, events), nil
+}
+
+func isRecoverableEventsListError(err error) bool {
+	var apiErr *googleapi.Error
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+
+	return apiErr.Code == http.StatusForbidden || apiErr.Code == http.StatusNotFound
 }
 
 type busyInterval struct {
