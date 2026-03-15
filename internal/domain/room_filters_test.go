@@ -3,6 +3,8 @@ package domain
 import (
 	"errors"
 	"testing"
+
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestFilterAndSortRooms_FilterByBuilding(t *testing.T) {
@@ -224,32 +226,7 @@ func TestFilterAndSortRooms_ReturnsErrorWhenStatusIsInvalid(t *testing.T) {
 }
 
 func testRoomsForFilterSort() []Room {
-	return []Room{
-		{
-			Code:     "AMPHI-A",
-			Name:     "Amphitheater A",
-			Building: "B1",
-			Capacity: 180,
-			Type:     "amphitheater",
-			Status:   "available",
-		},
-		{
-			Code:     "LAB-204",
-			Name:     "Computer Lab 204",
-			Building: "B2",
-			Capacity: 30,
-			Type:     "lab",
-			Status:   "occupied",
-		},
-		{
-			Code:     "LAB-101",
-			Name:     "Alpha Lab",
-			Building: "B1",
-			Capacity: 220,
-			Type:     "lab",
-			Status:   "available",
-		},
-	}
+	return domainRoomsFromMock(mockdata.RoomsForFilterAndSort())
 }
 
 func assertRoomNamesOrder(t *testing.T, rooms []Room, expected []string) {

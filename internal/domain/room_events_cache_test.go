@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestRoomEventsCache_CacheHitOnAvailability(t *testing.T) {
@@ -337,13 +339,5 @@ func (c *eventsFakeCalendarClient) SetError(err error) {
 }
 
 func eventsFixture(title string) []Event {
-	start := time.Date(2026, time.March, 10, 8, 0, 0, 0, time.UTC)
-	return []Event{
-		{
-			Title:     title,
-			Start:     start,
-			End:       start.Add(90 * time.Minute),
-			Organizer: "Academic Office",
-		},
-	}
+	return domainEventsFromMock(mockdata.CacheEvents(title))
 }

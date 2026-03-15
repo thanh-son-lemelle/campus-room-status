@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestInventoryCache_WarmupAtStartup(t *testing.T) {
@@ -335,25 +337,5 @@ func (s *fakeInventorySource) SetError(err error) {
 }
 
 func snapshotFixture(buildingID string, roomCode string) InventorySnapshot {
-	return InventorySnapshot{
-		Buildings: []Building{
-			{
-				ID:      buildingID,
-				Name:    "Building " + buildingID,
-				Address: "1 Campus Street",
-				Floors:  []int{0, 1, 2},
-			},
-		},
-		Rooms: []Room{
-			{
-				Code:     roomCode,
-				Name:     "Room " + roomCode,
-				Building: buildingID,
-				Floor:    1,
-				Capacity: 30,
-				Type:     "lab",
-				Status:   "available",
-			},
-		},
-	}
+	return domainInventorySnapshotFromMock(mockdata.InventorySnapshotFixture(buildingID, roomCode))
 }

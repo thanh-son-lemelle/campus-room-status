@@ -1,7 +1,6 @@
 package rooms
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -11,69 +10,6 @@ import (
 	"campus-room-status/internal/domain"
 	"github.com/gin-gonic/gin"
 )
-
-var scheduleFixture = []api.EventResponse{
-	{
-		Title:     "Advanced Networks",
-		Start:     time.Date(2026, time.March, 9, 9, 0, 0, 0, time.UTC),
-		End:       time.Date(2026, time.March, 9, 11, 0, 0, 0, time.UTC),
-		Organizer: "IT Department",
-	},
-	{
-		Title:     "Distributed Systems",
-		Start:     time.Date(2026, time.March, 9, 14, 0, 0, 0, time.UTC),
-		End:       time.Date(2026, time.March, 9, 16, 0, 0, 0, time.UTC),
-		Organizer: "Engineering Office",
-	},
-}
-
-var nextEventFixture = &api.EventResponse{
-	Title:     "Capstone Review",
-	Start:     time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC),
-	End:       time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC),
-	Organizer: "Academic Board",
-}
-
-var currentEventFixture = &api.EventResponse{
-	Title:     "OS Lab Session",
-	Start:     time.Date(2026, time.March, 9, 10, 0, 0, 0, time.UTC),
-	End:       time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC),
-	Organizer: "Systems Team",
-}
-
-var roomsFixture = []api.RoomResponse{
-	{
-		Code:         "AMPHI-A",
-		Name:         "Amphitheater A",
-		Building:     "B1",
-		Floor:        1,
-		Capacity:     180,
-		Type:         "amphitheater",
-		Status:       "available",
-		CurrentEvent: nil,
-		NextEvent:    nextEventFixture,
-	},
-	{
-		Code:         "LAB-204",
-		Name:         "Computer Lab 204",
-		Building:     "B2",
-		Floor:        2,
-		Capacity:     30,
-		Type:         "lab",
-		Status:       "occupied",
-		CurrentEvent: currentEventFixture,
-		NextEvent:    nil,
-	},
-}
-
-var defaultRoomService = newDefaultListService()
-var defaultListHandler = NewListHandler(defaultRoomService, nil)
-var defaultDetailHandler = NewDetailHandler(defaultRoomService)
-var defaultScheduleHandler = NewScheduleHandler(defaultRoomService)
-
-func ListHandler(c *gin.Context) {
-	defaultListHandler(c)
-}
 
 // NewListHandler godoc
 // @Summary List rooms with current and next events
@@ -155,10 +91,6 @@ func (h *listHandler) handle(c *gin.Context) {
 	})
 }
 
-func DetailHandler(c *gin.Context) {
-	defaultDetailHandler(c)
-}
-
 // NewDetailHandler godoc
 // @Summary Get room detail and today's schedule
 // @Tags rooms
@@ -222,10 +154,6 @@ func (h *detailHandler) handle(c *gin.Context) {
 		NextEvent:     domainEventToAPIEvent(room.NextEvent),
 		ScheduleToday: mapDomainEventsToAPIEvents(scheduleToday),
 	})
-}
-
-func ScheduleHandler(c *gin.Context) {
-	defaultScheduleHandler(c)
 }
 
 // NewScheduleHandler godoc
@@ -341,16 +269,6 @@ func (h *scheduleHandler) handle(c *gin.Context) {
 	})
 }
 
-func roomByCode(code string) (*api.RoomResponse, error) {
-	for i := range roomsFixture {
-		if roomsFixture[i].Code == code {
-			return &roomsFixture[i], nil
-		}
-	}
-
-	return nil, &domain.RoomNotFoundError{RoomCode: code}
-}
-
 func parseListFilters(c *gin.Context) (domain.RoomFilters, map[string]any, error) {
 	responseFilters := make(map[string]any)
 	queryFilters := domain.RoomFilters{}
@@ -409,21 +327,6 @@ func parseListFilters(c *gin.Context) (domain.RoomFilters, map[string]any, error
 	return queryFilters, responseFilters, nil
 }
 
-func apiRoomToDomainRoom(room api.RoomResponse) domain.Room {
-	return domain.Room{
-		Code:          room.Code,
-		ResourceEmail: room.ResourceEmail,
-		Name:          room.Name,
-		Building:      room.Building,
-		Floor:         room.Floor,
-		Capacity:      room.Capacity,
-		Type:          room.Type,
-		Status:        room.Status,
-		CurrentEvent:  apiEventToDomainEvent(room.CurrentEvent),
-		NextEvent:     apiEventToDomainEvent(room.NextEvent),
-	}
-}
-
 func domainRoomToAPIRoom(room domain.Room) api.RoomResponse {
 	return api.RoomResponse{
 		Code:          room.Code,
@@ -436,19 +339,6 @@ func domainRoomToAPIRoom(room domain.Room) api.RoomResponse {
 		Status:        room.Status,
 		CurrentEvent:  domainEventToAPIEvent(room.CurrentEvent),
 		NextEvent:     domainEventToAPIEvent(room.NextEvent),
-	}
-}
-
-func apiEventToDomainEvent(event *api.EventResponse) *domain.Event {
-	if event == nil {
-		return nil
-	}
-
-	return &domain.Event{
-		Title:     event.Title,
-		Start:     event.Start,
-		End:       event.End,
-		Organizer: event.Organizer,
 	}
 }
 
@@ -483,92 +373,8 @@ func mapDomainEventsToAPIEvents(events []domain.Event) []api.EventResponse {
 	return out
 }
 
-func newDefaultListService() domain.RoomService {
-	// TODO(ticket-13): replace default static sources with real Google adapters
-	// (Admin Directory inventory source + Calendar events client) wired from app composition root.
-	clock := fixedListServiceClock{
-		now: time.Date(2026, time.March, 9, 10, 30, 0, 0, time.UTC),
-	}
-
-	inventoryCache, err := domain.NewInventoryCache(
-		context.Background(),
-		defaultListInventorySource{},
-		time.Hour,
-		clock,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	eventsCache, err := domain.NewRoomEventsCache(
-		defaultListCalendarClient{},
-		5*time.Minute,
-		clock,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	statusInterpreter := domain.NewStatusInterpreter(clock, nil)
-	return NewService(inventoryCache, eventsCache, statusInterpreter, clock)
-}
-
 type listHandlerClock struct{}
 
 func (listHandlerClock) Now() time.Time {
 	return time.Now().UTC()
-}
-
-type fixedListServiceClock struct {
-	now time.Time
-}
-
-func (c fixedListServiceClock) Now() time.Time {
-	return c.now
-}
-
-type defaultListInventorySource struct{}
-
-func (defaultListInventorySource) LoadInventory(context.Context) (domain.InventorySnapshot, error) {
-	rooms := make([]domain.Room, len(roomsFixture))
-	for i := range roomsFixture {
-		rooms[i] = apiRoomToDomainRoom(roomsFixture[i])
-	}
-
-	return domain.InventorySnapshot{
-		Rooms: rooms,
-	}, nil
-}
-
-type defaultListCalendarClient struct{}
-
-func (defaultListCalendarClient) ListRoomEvents(_ context.Context, resourceEmail string, _, _ time.Time) ([]domain.Event, error) {
-	switch resourceEmail {
-	case "AMPHI-A":
-		if nextEventFixture == nil {
-			return nil, nil
-		}
-		return []domain.Event{
-			{
-				Title:     nextEventFixture.Title,
-				Start:     nextEventFixture.Start,
-				End:       nextEventFixture.End,
-				Organizer: nextEventFixture.Organizer,
-			},
-		}, nil
-	case "LAB-204":
-		if currentEventFixture == nil {
-			return nil, nil
-		}
-		return []domain.Event{
-			{
-				Title:     currentEventFixture.Title,
-				Start:     currentEventFixture.Start,
-				End:       currentEventFixture.End,
-				Organizer: currentEventFixture.Organizer,
-			},
-		}, nil
-	default:
-		return nil, nil
-	}
 }

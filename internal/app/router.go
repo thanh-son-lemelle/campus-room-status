@@ -326,69 +326,14 @@ func envDuration(name string) time.Duration {
 type staticInventorySource struct{}
 
 func (staticInventorySource) LoadInventory(context.Context) (domain.InventorySnapshot, error) {
-	return domain.InventorySnapshot{
-		Buildings: []domain.Building{
-			{
-				ID:      "B1",
-				Name:    "Building A",
-				Address: "1 Campus Street",
-				Floors:  []int{0, 1, 2},
-			},
-			{
-				ID:      "B2",
-				Name:    "Building B",
-				Address: "2 Campus Street",
-				Floors:  []int{0, 1, 2, 3},
-			},
-		},
-		Rooms: []domain.Room{
-			{
-				Code:     "AMPHI-A",
-				Name:     "Amphitheater A",
-				Building: "B1",
-				Floor:    1,
-				Capacity: 180,
-				Type:     "amphitheater",
-				Status:   "available",
-			},
-			{
-				Code:     "LAB-204",
-				Name:     "Computer Lab 204",
-				Building: "B2",
-				Floor:    2,
-				Capacity: 30,
-				Type:     "lab",
-				Status:   "available",
-			},
-		},
-	}, nil
+	return domain.InventorySnapshot{}, nil
 }
 
 type staticCalendarClient struct{}
 
 func (staticCalendarClient) ListRoomEvents(_ context.Context, resourceEmail string, _, _ time.Time) ([]domain.Event, error) {
-	switch resourceEmail {
-	case "AMPHI-A":
-		return []domain.Event{
-			{
-				Title:     "Capstone Review",
-				Start:     time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC),
-				End:       time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC),
-				Organizer: "Academic Board",
-			},
-		}, nil
-	case "LAB-204":
-		return []domain.Event{
-			{
-				Title:     "OS Lab Session",
-				Start:     time.Date(2026, time.March, 9, 10, 0, 0, 0, time.UTC),
-				End:       time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC),
-				Organizer: "Systems Team",
-			},
-		}, nil
-	default:
-		return nil, nil
-	}
+	_ = resourceEmail
+	return nil, nil
 }
 
 type staticTokenProvider struct {

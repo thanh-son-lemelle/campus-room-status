@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"campus-room-status/internal/domain"
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestService_ListRooms_ReturnsCompleteListWithoutFilters(t *testing.T) {
@@ -193,18 +194,12 @@ func TestService_GetRoomDetail_ScheduleTodayIsOrdered(t *testing.T) {
 
 	inventory := fakeInventoryReader{
 		snapshot: domain.InventorySnapshot{
-			Rooms: []domain.Room{
-				{Code: "AMPHI-A", Name: "Amphitheater A", Building: "B1", Capacity: 180, Type: "amphitheater"},
-			},
+			Rooms: domainRoomsFromMock([]mockdata.Room{mockdata.RoomAmphiA()}),
 		},
 	}
 	eventsReader := mapRoomEventsReader{
 		eventsByRoom: map[string][]domain.Event{
-			"AMPHI-A": {
-				{Title: "Third", Start: now.Add(2 * time.Hour), End: now.Add(3 * time.Hour)},
-				{Title: "First", Start: now.Add(-30 * time.Minute), End: now.Add(15 * time.Minute)},
-				{Title: "Second", Start: now.Add(time.Hour), End: now.Add(90 * time.Minute)},
-			},
+			"AMPHI-A": domainEventsFromMock(mockdata.DetailOrderedEvents(now)),
 		},
 	}
 	interpreter := domain.NewStatusInterpreter(clock, nil)
@@ -266,19 +261,13 @@ func TestService_GetRoomSchedule_ReturnsEventsSortedByStartDate(t *testing.T) {
 
 	inventory := fakeInventoryReader{
 		snapshot: domain.InventorySnapshot{
-			Rooms: []domain.Room{
-				{Code: "AMPHI-A", Name: "Amphitheater A", Building: "B1", Capacity: 180, Type: "amphitheater"},
-			},
+			Rooms: domainRoomsFromMock([]mockdata.Room{mockdata.RoomAmphiA()}),
 		},
 	}
 
 	eventsReader := mapRoomEventsReader{
 		eventsByRoom: map[string][]domain.Event{
-			"AMPHI-A": {
-				{Title: "Third", Start: now.Add(4 * time.Hour), End: now.Add(5 * time.Hour)},
-				{Title: "First", Start: now.Add(time.Hour), End: now.Add(2 * time.Hour)},
-				{Title: "Second", Start: now.Add(2 * time.Hour), End: now.Add(3 * time.Hour)},
-			},
+			"AMPHI-A": domainEventsFromMock(mockdata.ScheduleOrderedEvents(now)),
 		},
 	}
 
@@ -322,16 +311,7 @@ func TestService_ListRooms_UsesResourceEmailForCalendarLookupWhenAvailable(t *te
 
 	inventory := fakeInventoryReader{
 		snapshot: domain.InventorySnapshot{
-			Rooms: []domain.Room{
-				{
-					Code:          "AMPHI-A",
-					ResourceEmail: "amphi-a@example.org",
-					Name:          "Amphitheater A",
-					Building:      "B1",
-					Capacity:      180,
-					Type:          "amphitheater",
-				},
-			},
+			Rooms: domainRoomsFromMock([]mockdata.Room{mockdata.RoomWithResourceEmail()}),
 		},
 	}
 
@@ -382,11 +362,7 @@ func TestService_ListRooms_PrefiltersBeforeCalendarFetch(t *testing.T) {
 
 	inventory := fakeInventoryReader{
 		snapshot: domain.InventorySnapshot{
-			Rooms: []domain.Room{
-				{Code: "R1", ResourceEmail: "r1@example.org", Building: "B1", Type: "lab", Capacity: 20},
-				{Code: "R2", ResourceEmail: "r2@example.org", Building: "B1", Type: "lab", Capacity: 40},
-				{Code: "R3", ResourceEmail: "r3@example.org", Building: "B2", Type: "lab", Capacity: 50},
-			},
+			Rooms: domainRoomsFromMock(mockdata.RoomsForPrefilter()),
 		},
 	}
 	eventsReader := &capturingRoomEventsReader{}
@@ -477,37 +453,12 @@ func newTestRoomService(t *testing.T, forceMaintenance bool) domain.RoomService 
 
 	inventory := fakeInventoryReader{
 		snapshot: domain.InventorySnapshot{
-			Rooms: []domain.Room{
-				{Code: "AMPHI-A", Name: "Amphitheater A", Building: "B1", Capacity: 180, Type: "amphitheater"},
-				{Code: "LAB-204", Name: "Computer Lab 204", Building: "B2", Capacity: 30, Type: "lab"},
-				{Code: "LAB-101", Name: "Alpha Lab", Building: "B1", Capacity: 120, Type: "lab"},
-			},
+			Rooms: domainRoomsFromMock(mockdata.RoomsForRoomService()),
 		},
 	}
 
 	eventsReader := mapRoomEventsReader{
-		eventsByRoom: map[string][]domain.Event{
-			"AMPHI-A": {
-				{
-					Title: "Algorithms",
-					Start: now.Add(-10 * time.Minute),
-					End:   now.Add(20 * time.Minute),
-				},
-				{
-					Title: "Security",
-					Start: now.Add(40 * time.Minute),
-					End:   now.Add(100 * time.Minute),
-				},
-			},
-			"LAB-204": {
-				{
-					Title: "OS Lab",
-					Start: now.Add(20 * time.Minute),
-					End:   now.Add(80 * time.Minute),
-				},
-			},
-			"LAB-101": {},
-		},
+		eventsByRoom: domainEventsMapFromMock(mockdata.RoomServiceEventsByRoom(now)),
 	}
 
 	var unavailability domain.UnavailabilitySource
@@ -534,4 +485,42 @@ func findRoomByCodeInSlice(t *testing.T, rooms []domain.Room, code string) domai
 
 func strPtr(v string) *string {
 	return &v
+}
+
+func domainRoomsFromMock(rooms []mockdata.Room) []domain.Room {
+	out := make([]domain.Room, len(rooms))
+	for i := range rooms {
+		out[i] = domain.Room{
+			Code:          rooms[i].Code,
+			ResourceEmail: rooms[i].ResourceEmail,
+			Name:          rooms[i].Name,
+			Building:      rooms[i].Building,
+			Floor:         rooms[i].Floor,
+			Capacity:      rooms[i].Capacity,
+			Type:          rooms[i].Type,
+			Status:        rooms[i].Status,
+		}
+	}
+	return out
+}
+
+func domainEventsFromMock(events []mockdata.Event) []domain.Event {
+	out := make([]domain.Event, len(events))
+	for i := range events {
+		out[i] = domain.Event{
+			Title:     events[i].Title,
+			Start:     events[i].Start,
+			End:       events[i].End,
+			Organizer: events[i].Organizer,
+		}
+	}
+	return out
+}
+
+func domainEventsMapFromMock(eventsByRoom map[string][]mockdata.Event) map[string][]domain.Event {
+	out := make(map[string][]domain.Event, len(eventsByRoom))
+	for roomKey, events := range eventsByRoom {
+		out[roomKey] = domainEventsFromMock(events)
+	}
+	return out
 }

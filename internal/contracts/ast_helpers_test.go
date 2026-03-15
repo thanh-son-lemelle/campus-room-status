@@ -49,16 +49,16 @@ func parsePackage(t *testing.T, relDir string) parsedPackage {
 		t.Fatalf("no package found in %q", relDir)
 	}
 
-	var selected *ast.Package
+	var selectedFiles map[string]*ast.File
 	for _, pkg := range pkgs {
-		selected = pkg
+		selectedFiles = pkg.Files
 		break
 	}
 
-	files := make([]*ast.File, 0, len(selected.Files))
+	files := make([]*ast.File, 0, len(selectedFiles))
 	typeSpecs := make(map[string]*ast.TypeSpec)
 
-	for _, file := range selected.Files {
+	for _, file := range selectedFiles {
 		files = append(files, file)
 
 		for _, decl := range file.Decls {

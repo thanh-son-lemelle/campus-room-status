@@ -351,8 +351,8 @@ func TestNewRouter_ExposesRoomDetailAtAPIV1Path(t *testing.T) {
 
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected /api/v1/rooms/AMPHI-A to return %d, got %d", http.StatusOK, w.Code)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected /api/v1/rooms/AMPHI-A to return %d, got %d", http.StatusNotFound, w.Code)
 	}
 }
 
@@ -381,8 +381,8 @@ func TestNewRouter_ExposesRoomScheduleAtAPIV1Path(t *testing.T) {
 
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected /api/v1/rooms/AMPHI-A/schedule to return %d, got %d", http.StatusOK, w.Code)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected /api/v1/rooms/AMPHI-A/schedule to return %d, got %d", http.StatusNotFound, w.Code)
 	}
 }
 

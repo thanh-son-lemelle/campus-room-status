@@ -454,9 +454,7 @@ func normalizeEndpoint(baseURL string) string {
 	}
 
 	trimmed = strings.TrimRight(trimmed, "/")
-	if strings.HasSuffix(trimmed, "/admin/directory/v1") {
-		trimmed = strings.TrimSuffix(trimmed, "/admin/directory/v1")
-	}
+	trimmed = strings.TrimSuffix(trimmed, "/admin/directory/v1")
 
 	return trimmed + "/"
 }
