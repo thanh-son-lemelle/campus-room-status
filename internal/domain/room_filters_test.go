@@ -206,6 +206,23 @@ func TestFilterAndSortRooms_ReturnsErrorWhenCapacityMinGreaterThanCapacityMax(t 
 	}
 }
 
+func TestFilterAndSortRooms_ReturnsErrorWhenStatusIsInvalid(t *testing.T) {
+	_, err := FilterAndSortRooms(testRoomsForFilterSort(), RoomFilters{
+		Status: stringRef("unavailble"),
+	})
+	if err == nil {
+		t.Fatalf("expected error when status is invalid")
+	}
+
+	var invalidParamErr *InvalidParameterError
+	if !errors.As(err, &invalidParamErr) {
+		t.Fatalf("expected InvalidParameterError, got %T", err)
+	}
+	if invalidParamErr.Parameter != "status" {
+		t.Fatalf("expected invalid parameter 'status', got %q", invalidParamErr.Parameter)
+	}
+}
+
 func testRoomsForFilterSort() []Room {
 	return []Room{
 		{
