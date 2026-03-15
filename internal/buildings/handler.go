@@ -9,6 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// NewHandler godoc
+// @Summary List campus buildings
+// @Tags buildings
+// @Produce json
+// @Success 200 {object} api.BuildingsResponse
+// @Failure 503 {object} api.ErrorEnvelope
+// @Router /api/v1/buildings [get]
 func NewHandler(service domain.BuildingService, clock domain.Clock) gin.HandlerFunc {
 	h := &handler{
 		service: service,

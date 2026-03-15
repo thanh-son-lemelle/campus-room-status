@@ -75,6 +75,21 @@ func ListHandler(c *gin.Context) {
 	defaultListHandler(c)
 }
 
+// NewListHandler godoc
+// @Summary List rooms with current and next events
+// @Tags rooms
+// @Produce json
+// @Param building query string false "Building code or ID"
+// @Param type query string false "Room type"
+// @Param status query string false "Room status (available|occupied|upcoming|maintenance)"
+// @Param capacity_min query int false "Minimum capacity"
+// @Param capacity_max query int false "Maximum capacity"
+// @Param sort query string false "Sort field (name|capacity|status)"
+// @Param order query string false "Sort order (asc|desc)"
+// @Success 200 {object} api.RoomsListResponse
+// @Failure 400 {object} api.ErrorEnvelope
+// @Failure 503 {object} api.ErrorEnvelope
+// @Router /api/v1/rooms [get]
 func NewListHandler(service domain.RoomService, clock domain.Clock) gin.HandlerFunc {
 	h := &listHandler{
 		service: service,
@@ -144,6 +159,15 @@ func DetailHandler(c *gin.Context) {
 	defaultDetailHandler(c)
 }
 
+// NewDetailHandler godoc
+// @Summary Get room detail and today's schedule
+// @Tags rooms
+// @Produce json
+// @Param code path string true "Room code"
+// @Success 200 {object} api.RoomDetailResponse
+// @Failure 404 {object} api.ErrorEnvelope
+// @Failure 503 {object} api.ErrorEnvelope
+// @Router /api/v1/rooms/{code} [get]
 func NewDetailHandler(service domain.RoomService) gin.HandlerFunc {
 	h := &detailHandler{
 		service: service,
@@ -204,6 +228,18 @@ func ScheduleHandler(c *gin.Context) {
 	defaultScheduleHandler(c)
 }
 
+// NewScheduleHandler godoc
+// @Summary Get room schedule for a time period
+// @Tags rooms
+// @Produce json
+// @Param code path string true "Room code"
+// @Param start query string true "Start date-time (RFC3339)"
+// @Param end query string true "End date-time (RFC3339)"
+// @Success 200 {object} api.RoomScheduleResponse
+// @Failure 400 {object} api.ErrorEnvelope
+// @Failure 404 {object} api.ErrorEnvelope
+// @Failure 503 {object} api.ErrorEnvelope
+// @Router /api/v1/rooms/{code}/schedule [get]
 func NewScheduleHandler(service domain.RoomService) gin.HandlerFunc {
 	h := &scheduleHandler{
 		service: service,

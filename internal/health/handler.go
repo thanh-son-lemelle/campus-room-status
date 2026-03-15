@@ -14,6 +14,12 @@ func Handler(c *gin.Context) {
 	defaultHandler(c)
 }
 
+// NewHandler godoc
+// @Summary Get API health status
+// @Tags health
+// @Produce json
+// @Success 200 {object} api.HealthResponse
+// @Router /api/v1/health [get]
 func NewHandler(service domain.HealthService) gin.HandlerFunc {
 	h := &handler{
 		service: service,

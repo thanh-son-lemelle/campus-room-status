@@ -60,10 +60,10 @@ type RoomScheduleResponse struct {
 }
 
 type RoomsListResponse struct {
-	Timestamp time.Time      `json:"timestamp"`
-	Filters   map[string]any `json:"filters"`
-	Count     int            `json:"count"`
-	Rooms     []RoomResponse `json:"rooms"`
+	Timestamp time.Time              `json:"timestamp"`
+	Filters   map[string]interface{} `json:"filters"`
+	Count     int                    `json:"count"`
+	Rooms     []RoomResponse         `json:"rooms"`
 }
 
 type HealthResponse struct {
