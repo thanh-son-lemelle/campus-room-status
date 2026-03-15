@@ -163,6 +163,16 @@ func (c *RoomEventsCache) HealthState() RoomEventsCacheHealthState {
 	return state
 }
 
+func (c *RoomEventsCache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.entries = make(map[string]roomEventsCacheEntry)
+	c.degraded = false
+	c.lastCalendarErrorAt = nil
+	c.lastSuccessfulRefreshAt = nil
+}
+
 func mapKeyFromRoomEventsKey(key RoomEventsKey) (string, RoomEventsKey, error) {
 	normalized, err := normalizeRoomEventsKey(key)
 	if err != nil {

@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"campus-room-status/internal/domain"
 	"campus-room-status/internal/google/adminsdk"
 	gcalendar "campus-room-status/internal/google/calendar"
 	goauth "campus-room-status/internal/google/oauth"
@@ -56,8 +59,12 @@ func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenGoogleSourceAndTokenPre
 
 	source := newRuntimeInventorySource()
 
-	if _, ok := source.(*adminsdk.InventorySource); !ok {
-		t.Fatalf("expected *adminsdk.InventorySource when DATA_SOURCE=google and GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", source)
+	wrapped, ok := source.(oauthBootstrapInventorySource)
+	if !ok {
+		t.Fatalf("expected oauthBootstrapInventorySource when DATA_SOURCE=google and GOOGLE_ADMIN_BEARER_TOKEN is present, got %T", source)
+	}
+	if _, ok := wrapped.primary.(*adminsdk.InventorySource); !ok {
+		t.Fatalf("expected wrapped primary source to be *adminsdk.InventorySource, got %T", wrapped.primary)
 	}
 }
 
@@ -70,8 +77,31 @@ func TestNewRuntimeInventorySource_UsesAdminSDKSourceWhenGoogleSourceAndServiceA
 
 	source := newRuntimeInventorySource()
 
-	if _, ok := source.(*adminsdk.InventorySource); !ok {
-		t.Fatalf("expected *adminsdk.InventorySource when DATA_SOURCE=google and GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", source)
+	wrapped, ok := source.(oauthBootstrapInventorySource)
+	if !ok {
+		t.Fatalf("expected oauthBootstrapInventorySource when DATA_SOURCE=google and GOOGLE_SERVICE_ACCOUNT_JSON is present, got %T", source)
+	}
+	if _, ok := wrapped.primary.(*adminsdk.InventorySource); !ok {
+		t.Fatalf("expected wrapped primary source to be *adminsdk.InventorySource, got %T", wrapped.primary)
+	}
+}
+
+func TestNewRuntimeInventorySource_DoesNotFallbackToStaticWhenGoogleSourceAndNoProvider(t *testing.T) {
+	clearOAuthEnv(t)
+	t.Setenv("DATA_SOURCE", "google")
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "")
+
+	source := newRuntimeInventorySource()
+
+	if _, ok := source.(staticInventorySource); ok {
+		t.Fatalf("expected non-static source when DATA_SOURCE=google")
+	}
+	if _, ok := source.(unavailableInventorySource); !ok {
+		t.Fatalf("expected unavailableInventorySource when DATA_SOURCE=google and no provider, got %T", source)
 	}
 }
 
@@ -161,7 +191,7 @@ func TestNewRuntimeOAuthTokenProvider_LoadsWhenConfigAndRefreshTokenPresent(t *t
 	}
 }
 
-func TestNewRuntimeOAuthTokenProvider_FailsWhenRefreshTokenIsMissing(t *testing.T) {
+func TestNewRuntimeOAuthTokenProvider_LoadsWhenConfigPresentEvenIfRefreshTokenMissing(t *testing.T) {
 	clearOAuthEnv(t)
 
 	tokenFile := filepath.Join(t.TempDir(), "oauth-refresh.json")
@@ -173,8 +203,43 @@ func TestNewRuntimeOAuthTokenProvider_FailsWhenRefreshTokenIsMissing(t *testing.
 	t.Setenv("GOOGLE_OAUTH_REFRESH_TOKEN_FILE", tokenFile)
 
 	provider, ok := newRuntimeOAuthTokenProvider()
-	if ok {
-		t.Fatalf("expected oauth provider loading to fail without persisted refresh token, got %T", provider)
+	if !ok {
+		t.Fatalf("expected oauth provider loading to succeed when config is present")
+	}
+	if _, typed := provider.(*goauth.TokenProvider); !typed {
+		t.Fatalf("expected *oauth.TokenProvider, got %T", provider)
+	}
+}
+
+func TestOAuthBootstrapInventorySource_ReturnsEmptySnapshotOnMissingRefreshToken(t *testing.T) {
+	source := oauthBootstrapInventorySource{
+		primary: inventorySourceFunc(func(context.Context) (domain.InventorySnapshot, error) {
+			return domain.InventorySnapshot{}, errors.New("retrieve access token: missing refresh token; run OAuth consent flow first")
+		}),
+	}
+
+	snapshot, err := source.LoadInventory(context.Background())
+	if err != nil {
+		t.Fatalf("expected empty bootstrap snapshot, got error: %v", err)
+	}
+	if len(snapshot.Rooms) != 0 {
+		t.Fatalf("expected no rooms during oauth bootstrap, got %d", len(snapshot.Rooms))
+	}
+	if len(snapshot.Buildings) != 0 {
+		t.Fatalf("expected no buildings during oauth bootstrap, got %d", len(snapshot.Buildings))
+	}
+}
+
+func TestOAuthBootstrapInventorySource_PropagatesNonRefreshTokenErrors(t *testing.T) {
+	source := oauthBootstrapInventorySource{
+		primary: inventorySourceFunc(func(context.Context) (domain.InventorySnapshot, error) {
+			return domain.InventorySnapshot{}, errors.New("quota exceeded")
+		}),
+	}
+
+	_, err := source.LoadInventory(context.Background())
+	if err == nil {
+		t.Fatalf("expected non-refresh-token errors to be propagated")
 	}
 }
 
@@ -595,4 +660,10 @@ func clearDataSourceEnv(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATA_SOURCE", "")
 	_ = os.Unsetenv("DATA_SOURCE")
+}
+
+type inventorySourceFunc func(context.Context) (domain.InventorySnapshot, error)
+
+func (f inventorySourceFunc) LoadInventory(ctx context.Context) (domain.InventorySnapshot, error) {
+	return f(ctx)
 }

@@ -3,6 +3,8 @@ package app
 import (
 	"context"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -30,6 +32,14 @@ const (
 	runtimeDataSourceStatic runtimeDataSource = "static"
 	runtimeDataSourceGoogle runtimeDataSource = "google"
 )
+
+type runtimeServices struct {
+	buildingService domain.BuildingService
+	roomService     domain.RoomService
+	healthService   domain.HealthService
+	inventoryCache  *domain.InventoryCache
+	eventsCache     *domain.RoomEventsCache
+}
 
 // NewRouter godoc
 // @Summary Get Swagger specification
@@ -65,7 +75,7 @@ func NewRouter() *gin.Engine {
 		))
 	})
 
-	buildingService, roomService, healthService := newRuntimeServices()
+	services := newRuntimeServices()
 	oauthFlow := newRuntimeOAuthFlow()
 
 	apiGroup := r.Group("/api/v1")
@@ -74,18 +84,19 @@ func NewRouter() *gin.Engine {
 		swaggerFiles.Handler,
 		ginSwagger.URL("/api/v1/docs/openapi.json"),
 	))
+	// TODO(prod): protect or disable OAuth consent endpoints outside trusted admin network.
 	apiGroup.GET("/auth/google/start", goauth.NewStartHandler(oauthFlow))
-	apiGroup.GET("/auth/google/callback", goauth.NewCallbackHandler(oauthFlow))
-	apiGroup.GET("/buildings", buildings.NewHandler(buildingService, nil))
-	apiGroup.GET("/health", health.NewHandler(healthService))
-	apiGroup.GET("/rooms", rooms.NewListHandler(roomService, nil))
-	apiGroup.GET("/rooms/:code", rooms.NewDetailHandler(roomService))
-	apiGroup.GET("/rooms/:code/schedule", rooms.NewScheduleHandler(roomService))
+	apiGroup.GET("/auth/google/callback", goauth.NewCallbackHandlerWithHook(oauthFlow, services.refreshCachesAfterOAuth))
+	apiGroup.GET("/buildings", buildings.NewHandler(services.buildingService, nil))
+	apiGroup.GET("/health", health.NewHandler(services.healthService))
+	apiGroup.GET("/rooms", rooms.NewListHandler(services.roomService, nil))
+	apiGroup.GET("/rooms/:code", rooms.NewDetailHandler(services.roomService))
+	apiGroup.GET("/rooms/:code/schedule", rooms.NewScheduleHandler(services.roomService))
 
 	return r
 }
 
-func newRuntimeServices() (domain.BuildingService, domain.RoomService, domain.HealthService) {
+func newRuntimeServices() runtimeServices {
 	cache, err := domain.NewInventoryCache(
 		context.Background(),
 		newRuntimeInventorySource(),
@@ -107,9 +118,25 @@ func newRuntimeServices() (domain.BuildingService, domain.RoomService, domain.He
 
 	buildingService := buildings.NewService(cache)
 	roomService := rooms.NewService(cache, eventsCache, nil, nil)
+	// TODO(prod): inject version from build metadata/env instead of hardcoded "dev".
 	healthService := health.NewService(cache, eventsCache, nil, "dev")
 
-	return buildingService, roomService, healthService
+	return runtimeServices{
+		buildingService: buildingService,
+		roomService:     roomService,
+		healthService:   healthService,
+		inventoryCache:  cache,
+		eventsCache:     eventsCache,
+	}
+}
+
+func (s runtimeServices) refreshCachesAfterOAuth(ctx context.Context) {
+	if s.inventoryCache != nil {
+		_ = s.inventoryCache.ForceRefresh(ctx)
+	}
+	if s.eventsCache != nil {
+		s.eventsCache.Clear()
+	}
 }
 
 func newRuntimeInventorySource() domain.InventorySource {
@@ -119,7 +146,9 @@ func newRuntimeInventorySource() domain.InventorySource {
 
 	tokenProvider, ok := newRuntimeAdminTokenProvider()
 	if !ok {
-		return staticInventorySource{}
+		return unavailableInventorySource{
+			err: errors.New("google inventory source selected but no Google token provider is configured"),
+		}
 	}
 
 	source, err := adminsdk.NewInventorySource(
@@ -133,10 +162,14 @@ func newRuntimeInventorySource() domain.InventorySource {
 		},
 	)
 	if err != nil {
-		return staticInventorySource{}
+		return unavailableInventorySource{
+			err: fmt.Errorf("create Google inventory source: %w", err),
+		}
 	}
 
-	return source
+	return oauthBootstrapInventorySource{
+		primary: source,
+	}
 }
 
 func newRuntimeCalendarClient() domain.CalendarClient {
@@ -146,7 +179,9 @@ func newRuntimeCalendarClient() domain.CalendarClient {
 
 	tokenProvider, ok := newRuntimeAdminTokenProvider()
 	if !ok {
-		return staticCalendarClient{}
+		return unavailableCalendarClient{
+			err: errors.New("google calendar client selected but no Google token provider is configured"),
+		}
 	}
 
 	client, err := gcalendar.NewClient(
@@ -159,7 +194,9 @@ func newRuntimeCalendarClient() domain.CalendarClient {
 		},
 	)
 	if err != nil {
-		return staticCalendarClient{}
+		return unavailableCalendarClient{
+			err: fmt.Errorf("create Google calendar client: %w", err),
+		}
 	}
 
 	return client
@@ -195,14 +232,8 @@ func newRuntimeOAuthTokenProvider() (adminsdk.TokenProvider, bool) {
 		return nil, false
 	}
 
+	// TODO(prod): replace file token store with secret manager or env-backed secure store.
 	store := goauth.NewFileRefreshTokenStore(cfg.RefreshTokenFile)
-	refreshToken, err := store.Load(context.Background())
-	if err != nil {
-		return nil, false
-	}
-	if strings.TrimSpace(refreshToken) == "" {
-		return nil, false
-	}
 
 	provider, err := goauth.NewTokenProvider(cfg, store)
 	if err != nil {
@@ -218,6 +249,7 @@ func newRuntimeOAuthFlow() *goauth.AuthorizationFlow {
 		return nil
 	}
 
+	// TODO(prod): replace file token store with secret manager or env-backed secure store.
 	store := goauth.NewFileRefreshTokenStore(cfg.RefreshTokenFile)
 	flow, err := goauth.NewAuthorizationFlow(cfg, store)
 	if err != nil {
@@ -365,4 +397,46 @@ type staticTokenProvider struct {
 
 func (p staticTokenProvider) Token(context.Context) (string, error) {
 	return p.token, nil
+}
+
+type oauthBootstrapInventorySource struct {
+	primary domain.InventorySource
+}
+
+func (s oauthBootstrapInventorySource) LoadInventory(ctx context.Context) (domain.InventorySnapshot, error) {
+	snapshot, err := s.primary.LoadInventory(ctx)
+	if err == nil {
+		return snapshot, nil
+	}
+	if !isMissingRefreshTokenError(err) {
+		return domain.InventorySnapshot{}, err
+	}
+
+	// Keep API bootstrappable for OAuth consent flow without serving static fixtures.
+	return domain.InventorySnapshot{}, nil
+}
+
+func isMissingRefreshTokenError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	lower := strings.ToLower(err.Error())
+	return strings.Contains(lower, "missing refresh token")
+}
+
+type unavailableInventorySource struct {
+	err error
+}
+
+func (s unavailableInventorySource) LoadInventory(context.Context) (domain.InventorySnapshot, error) {
+	return domain.InventorySnapshot{}, s.err
+}
+
+type unavailableCalendarClient struct {
+	err error
+}
+
+func (c unavailableCalendarClient) ListRoomEvents(context.Context, string, time.Time, time.Time) ([]domain.Event, error) {
+	return nil, c.err
 }

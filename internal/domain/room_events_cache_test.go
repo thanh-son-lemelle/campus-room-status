@@ -230,6 +230,60 @@ func TestRoomEventsCache_ExposesDegradedStateForHealth(t *testing.T) {
 	}
 }
 
+func TestRoomEventsCache_ClearResetsEntriesAndHealth(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 18, 0, 0, 0, time.UTC)
+	ttl := 2 * time.Minute
+	clock := &eventsCacheFakeClock{now: now}
+	calendar := &eventsFakeCalendarClient{
+		responses: [][]Event{
+			eventsFixture("Algorithms"),
+			eventsFixture("Distributed Systems"),
+		},
+	}
+
+	cache, err := NewRoomEventsCache(calendar, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	key := RoomEventsKey{
+		RoomEmail: "amphi-a@example.org",
+		Start:     now,
+		End:       now.Add(time.Hour),
+	}
+
+	if _, err := cache.Get(context.Background(), key); err != nil {
+		t.Fatalf("expected first load to succeed, got error: %v", err)
+	}
+	if calendar.Calls() != 1 {
+		t.Fatalf("expected first calendar call, got %d", calendar.Calls())
+	}
+
+	cache.Clear()
+
+	meta := cache.Metadata(key)
+	if meta.HasData {
+		t.Fatalf("expected metadata to report no cached data after clear")
+	}
+	health := cache.HealthState()
+	if health.Degraded {
+		t.Fatalf("expected healthy state after clear")
+	}
+	if health.LastCalendarErrorAt != nil {
+		t.Fatalf("expected calendar error timestamp to be cleared")
+	}
+	if health.LastSuccessfulRefreshAt != nil {
+		t.Fatalf("expected last successful refresh timestamp to be cleared")
+	}
+
+	if _, err := cache.Get(context.Background(), key); err != nil {
+		t.Fatalf("expected load after clear to succeed, got error: %v", err)
+	}
+	if calendar.Calls() != 2 {
+		t.Fatalf("expected second calendar call after clear, got %d", calendar.Calls())
+	}
+}
+
 type eventsCacheFakeClock struct {
 	now time.Time
 }

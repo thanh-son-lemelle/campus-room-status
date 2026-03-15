@@ -109,6 +109,29 @@ func (c *InventoryCache) HealthState() InventoryCacheHealthState {
 	return state
 }
 
+func (c *InventoryCache) ForceRefresh(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	now := c.clock.Now()
+	snapshot, err := c.source.LoadInventory(ctx)
+	if err != nil {
+		failedAt := now
+		c.degraded = true
+		c.lastAdminError = &failedAt
+		return err
+	}
+
+	c.snapshot = cloneSnapshot(snapshot)
+	c.lastRefresh = now
+	c.expiresAt = now.Add(c.ttl)
+	c.hasData = true
+	c.degraded = false
+	c.lastAdminError = nil
+
+	return nil
+}
+
 func (c *InventoryCache) warmup(ctx context.Context) error {
 	snapshot, err := c.source.LoadInventory(ctx)
 	if err != nil {

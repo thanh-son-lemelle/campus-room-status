@@ -20,6 +20,7 @@ type FileRefreshTokenStore struct {
 }
 
 func NewFileRefreshTokenStore(path string) *FileRefreshTokenStore {
+	// TODO(prod): avoid local plaintext file; use a managed secret backend.
 	return &FileRefreshTokenStore{path: strings.TrimSpace(path)}
 }
 
@@ -47,6 +48,7 @@ func (s *FileRefreshTokenStore) Save(_ context.Context, token string) error {
 		RefreshToken: strings.TrimSpace(token),
 		UpdatedAt:    time.Now().UTC(),
 	}
+	// TODO(prod): encrypt token payload at rest (KMS/envelope) if file storage is unavoidable.
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return err

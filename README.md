@@ -25,6 +25,13 @@ Scopes par défaut si `GOOGLE_OAUTH_SCOPES` est vide:
 
 ### Procédure de consentement initial
 
+Quand `DATA_SOURCE=google`, aucun fallback de fixtures statiques n'est utilisé.
+Avant le premier consentement OAuth, l'inventaire peut donc etre vide.
+Pour lancer automatiquement l'ecran de consentement au demarrage:
+
+- `DATA_SOURCE=google`
+- optionnel: `APP_BASE_URL` (defaut `http://localhost:8080`)
+
 1. Démarrer l'API:
    - `go run ./cmd/api`
 2. Ouvrir dans un navigateur:
@@ -33,6 +40,7 @@ Scopes par défaut si `GOOGLE_OAUTH_SCOPES` est vide:
 3. Se connecter avec un administrateur Google Workspace et accepter les scopes.
 4. Google redirige vers `GOOGLE_OAUTH_REDIRECT_URI`.
 5. Le callback échange le code OAuth et persiste le `refresh_token` dans `GOOGLE_OAUTH_REFRESH_TOKEN_FILE`.
+6. Si `DATA_SOURCE=google`, l'API force un refresh des caches après callback réussi (pas besoin de redémarrer).
 
 Réponse de succès callback:
 

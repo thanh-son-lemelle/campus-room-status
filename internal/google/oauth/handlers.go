@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -51,6 +52,10 @@ func NewStartHandler(flow *AuthorizationFlow) gin.HandlerFunc {
 // @Failure 503 {object} api.ErrorEnvelope
 // @Router /api/v1/auth/google/callback [get]
 func NewCallbackHandler(flow *AuthorizationFlow) gin.HandlerFunc {
+	return NewCallbackHandlerWithHook(flow, nil)
+}
+
+func NewCallbackHandlerWithHook(flow *AuthorizationFlow, onConnected func(context.Context)) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if flow == nil {
 			api.WriteError(c, api.NewHTTPError(
@@ -88,6 +93,10 @@ func NewCallbackHandler(flow *AuthorizationFlow) gin.HandlerFunc {
 				"Echec consentement Google: "+err.Error(),
 			))
 			return
+		}
+
+		if onConnected != nil {
+			onConnected(c.Request.Context())
 		}
 
 		c.JSON(http.StatusOK, gin.H{
