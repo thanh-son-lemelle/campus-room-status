@@ -91,3 +91,19 @@ Elle couvre les endpoints obligatoires:
 Regeneration de la spec:
 
 - `go generate ./internal/docs`
+
+## Load test k6
+
+Pre-requis: `k6` installe sur la machine.
+
+Run unique (exemple 100 clients):
+
+- `k6 run .\loadtests\k6_rooms.js --env BASE_URL=http://localhost:8080/api/v1 --env VUS=100 --env DURATION=60s`
+
+Run matrice 10/50/100/1000:
+
+- `pwsh -File .\loadtests\run-k6-matrix.ps1 -BaseUrl http://localhost:8080/api/v1 -Duration 60s`
+
+Resultats:
+
+- Fichiers `.log` et `-summary.json` dans `loadtests/results/`
