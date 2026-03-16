@@ -142,7 +142,7 @@ func mapCalendarEvent(item *gcalendar.Event) (domain.Event, bool) {
 
 	title := firstNonEmpty(item.Summary, item.Description)
 	if title == "" {
-		title = "Busy"
+		title = "Unknown event"
 	}
 
 	return domain.Event{
@@ -209,7 +209,7 @@ func mergeBusyAndDetailedEvents(busy []busyInterval, detailed []domain.Event) []
 		}
 
 		out = append(out, domain.Event{
-			Title:     "Busy",
+			Title:     "Unknown event",
 			Start:     interval.Start,
 			End:       interval.End,
 			Organizer: "Google Calendar",
@@ -226,10 +226,10 @@ func mergeBusyAndDetailedEvents(busy []busyInterval, detailed []domain.Event) []
 	return out
 }
 
-// busyIntervalCoveredByDetailedEvents busies interval covered by detailed events.
+// busyIntervalCoveredByDetailedEvents checks if a busy interval is covered by detailed events.
 //
 // Summary:
-// - Busies interval covered by detailed events.
+// - Checks if a busy interval is covered by detailed events.
 //
 // Attributes:
 // - interval (busyInterval): Input parameter.
