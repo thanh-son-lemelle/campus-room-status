@@ -121,21 +121,6 @@ func newRuntimeCalendarClientWithConfig(cfg runtimeConfig) domain.CalendarClient
 	return client
 }
 
-// newRuntimeAdminTokenProvider creates a new runtime admin token provider.
-//
-// Summary:
-// - Creates a new runtime admin token provider.
-//
-// Attributes:
-// - None.
-//
-// Returns:
-// - value1 (adminsdk.TokenProvider): Returned value.
-// - value2 (bool): Returned value.
-func newRuntimeAdminTokenProvider() (adminsdk.TokenProvider, bool) {
-	return newRuntimeAdminTokenProviderWithConfig(loadRuntimeConfigFromEnv())
-}
-
 // newRuntimeAdminTokenProviderWithConfig creates a new runtime admin token provider with config.
 //
 // Summary:

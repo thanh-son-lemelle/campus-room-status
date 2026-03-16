@@ -65,8 +65,8 @@ func TestClient_ListRoomEvents_MapsFreeBusyIntervalsToBusyEvents(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("expected one busy event, got %d", len(events))
 	}
-	if events[0].Title != "Busy" {
-		t.Fatalf("expected busy fallback title, got %q", events[0].Title)
+	if events[0].Title != "Unknown event" {
+		t.Fatalf("expected unknown fallback title, got %q", events[0].Title)
 	}
 	if !events[0].Start.Equal(time.Date(2026, time.March, 10, 9, 0, 0, 0, time.UTC)) {
 		t.Fatalf("unexpected busy event start: %s", events[0].Start)
@@ -180,8 +180,8 @@ func TestClient_ListRoomEvents_UsesReadableFallbacksWhenSummaryAndOrganizerAreMi
 	if len(events) != 1 {
 		t.Fatalf("expected 1 event, got %d", len(events))
 	}
-	if events[0].Title != "Busy" {
-		t.Fatalf("expected title fallback Busy, got %q", events[0].Title)
+	if events[0].Title != "Unknown event" {
+		t.Fatalf("expected title fallback Unknown event, got %q", events[0].Title)
 	}
 	if events[0].Organizer != "Google Calendar" {
 		t.Fatalf("expected organizer fallback Google Calendar, got %q", events[0].Organizer)
@@ -233,8 +233,8 @@ func TestClient_ListRoomEvents_HandlesPartialResponses(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("expected fallback busy event when detailed event is malformed, got %d events", len(events))
 	}
-	if events[0].Title != "Busy" {
-		t.Fatalf("expected busy fallback title, got %q", events[0].Title)
+	if events[0].Title != "Unknown event" {
+		t.Fatalf("expected unknown fallback title, got %q", events[0].Title)
 	}
 }
 
@@ -277,8 +277,8 @@ func TestClient_ListRoomEvents_FallsBackToFreeBusyWhenEventsListIsForbidden(t *t
 	if len(events) != 1 {
 		t.Fatalf("expected busy fallback event, got %d", len(events))
 	}
-	if events[0].Title != "Busy" {
-		t.Fatalf("expected busy fallback title, got %q", events[0].Title)
+	if events[0].Title != "Unknown event" {
+		t.Fatalf("expected unknown fallback title, got %q", events[0].Title)
 	}
 }
 

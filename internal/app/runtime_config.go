@@ -103,6 +103,7 @@ func readServiceAccountCredentials() ([]byte, bool) {
 		return nil, false
 	}
 
+	// #nosec G304,G703 -- file path is controlled by trusted deployment configuration.
 	credentialsJSON, err := os.ReadFile(filePath)
 	if err != nil || len(credentialsJSON) == 0 {
 		return nil, false

@@ -19,21 +19,6 @@ type runtimeServices struct {
 	eventsCache     *domain.RoomEventsCache
 }
 
-// newRuntimeServices creates a new runtime services.
-//
-// Summary:
-// - Creates a new runtime services.
-//
-// Attributes:
-// - None.
-//
-// Returns:
-// - value1 (runtimeServices): Returned value.
-// - value2 (error): Returned value.
-func newRuntimeServices() (runtimeServices, error) {
-	return newRuntimeServicesWithConfig(loadRuntimeConfigFromEnv())
-}
-
 // newRuntimeServicesWithConfig creates a new runtime services with config.
 //
 // Summary:
@@ -76,20 +61,6 @@ func newRuntimeServicesWithConfig(cfg runtimeConfig) (runtimeServices, error) {
 		inventoryCache:  cache,
 		eventsCache:     eventsCache,
 	}, nil
-}
-
-// newUnavailableRuntimeServices creates a new unavailable runtime services.
-//
-// Summary:
-// - Creates a new unavailable runtime services.
-//
-// Attributes:
-// - cause (error): Input parameter.
-//
-// Returns:
-// - value1 (runtimeServices): Returned value.
-func newUnavailableRuntimeServices(cause error) runtimeServices {
-	return newUnavailableRuntimeServicesWithConfig(cause, loadRuntimeConfigFromEnv())
 }
 
 // newUnavailableRuntimeServicesWithConfig creates a new unavailable runtime services with config.
@@ -222,5 +193,5 @@ func runtimeServiceUnavailableError(cause error) error {
 		return base
 	}
 
-	return fmt.Errorf("%w: %v", base, cause)
+	return fmt.Errorf("%w: %w", base, cause)
 }

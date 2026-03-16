@@ -30,12 +30,17 @@ func loadDotEnvIfPresent() {
 	}
 }
 
-func loadDotEnvFile(path string) error {
+func loadDotEnvFile(path string) (err error) {
+	// #nosec G304 -- path is selected from a fixed internal candidate list.
 	file, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close %s: %w", path, closeErr))
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
