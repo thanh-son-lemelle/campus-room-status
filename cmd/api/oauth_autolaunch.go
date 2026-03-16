@@ -13,6 +13,16 @@ import (
 	goauth "campus-room-status/internal/google/oauth"
 )
 
+// maybeAutoLaunchOAuthConsent maybes auto launch o auth consent.
+//
+// Summary:
+// - Maybes auto launch o auth consent.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - None.
 func maybeAutoLaunchOAuthConsent() {
 	startURL, ok := oauthAutoLaunchStartURLFromEnv()
 	if !ok {
@@ -32,6 +42,17 @@ func maybeAutoLaunchOAuthConsent() {
 	}(startURL)
 }
 
+// oauthAutoLaunchStartURLFromEnv oauths auto launch start url from env.
+//
+// Summary:
+// - Oauths auto launch start url from env.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (bool): Returned value.
 func oauthAutoLaunchStartURLFromEnv() (string, bool) {
 	if !strings.EqualFold(strings.TrimSpace(os.Getenv("DATA_SOURCE")), "google") {
 		return "", false
@@ -56,6 +77,16 @@ func oauthAutoLaunchStartURLFromEnv() (string, bool) {
 	return oauthStartEndpointURLFromEnv(), true
 }
 
+// oauthStartEndpointURLFromEnv oauths start endpoint url from env.
+//
+// Summary:
+// - Oauths start endpoint url from env.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (string): Returned value.
 func oauthStartEndpointURLFromEnv() string {
 	baseURL := strings.TrimSpace(os.Getenv("APP_BASE_URL"))
 	if baseURL == "" {
@@ -65,6 +96,16 @@ func oauthStartEndpointURLFromEnv() string {
 	return strings.TrimRight(baseURL, "/") + "/api/v1/auth/google/start"
 }
 
+// openBrowser opens browser.
+//
+// Summary:
+// - Opens browser.
+//
+// Attributes:
+// - url (string): Input parameter.
+//
+// Returns:
+// - value1 (error): Returned value.
 func openBrowser(url string) error {
 	if strings.TrimSpace(url) == "" {
 		return errors.New("browser URL is required")

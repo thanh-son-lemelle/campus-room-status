@@ -458,13 +458,45 @@ func TestNewRouter_Error404UsesStandardFormat(t *testing.T) {
 }
 
 func TestNewRouter_Error503UsesStandardFormat(t *testing.T) {
+	clearOAuthEnv(t)
 	r := NewRouter()
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/api/v1/rooms/SVC-UNAVAILABLE/schedule?start=2026-03-09&end=2026-03-09",
+		"/api/v1/auth/google/start",
 		nil,
 	)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected status %d, got %d", http.StatusServiceUnavailable, w.Code)
+	}
+
+	errObj := assertStandardErrorResponse(t, w.Body.Bytes())
+
+	code, ok := errObj["code"].(string)
+	if !ok {
+		t.Fatalf("expected error.code to be a string")
+	}
+	if code != "GOOGLE_SERVICE_UNAVAILABLE" {
+		t.Fatalf("expected error.code %q, got %q", "GOOGLE_SERVICE_UNAVAILABLE", code)
+	}
+}
+
+func TestNewRouter_DoesNotPanicOnRuntimeBootstrapFailure(t *testing.T) {
+	clearOAuthEnv(t)
+	t.Setenv("DATA_SOURCE", "google")
+	t.Setenv("GOOGLE_ADMIN_BEARER_TOKEN", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64", "")
+	t.Setenv("GOOGLE_SERVICE_ACCOUNT_FILE", "")
+	t.Setenv("GOOGLE_ADMIN_IMPERSONATED_USER", "")
+
+	r := NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/rooms", nil)
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)

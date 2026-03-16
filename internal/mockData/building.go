@@ -7,6 +7,16 @@ type Building struct {
 	Floors  []string
 }
 
+// BuildingB1 buildings b 1.
+//
+// Summary:
+// - Buildings b 1.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (Building): Returned value.
 func BuildingB1() Building {
 	return Building{
 		ID:      "B1",
@@ -16,6 +26,16 @@ func BuildingB1() Building {
 	}
 }
 
+// BuildingB2 buildings b 2.
+//
+// Summary:
+// - Buildings b 2.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (Building): Returned value.
 func BuildingB2() Building {
 	return Building{
 		ID:      "B2",
@@ -25,6 +45,16 @@ func BuildingB2() Building {
 	}
 }
 
+// BuildingFromID buildings from id.
+//
+// Summary:
+// - Buildings from id.
+//
+// Attributes:
+// - buildingID (string): Input parameter.
+//
+// Returns:
+// - value1 (Building): Returned value.
 func BuildingFromID(buildingID string) Building {
 	return Building{
 		ID:      buildingID,

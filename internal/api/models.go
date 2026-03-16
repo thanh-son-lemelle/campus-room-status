@@ -77,7 +77,6 @@ type HealthResponse struct {
 
 type RoomsQuery struct {
 	Building    *string `form:"building"`
-	Floor       *int    `form:"floor"`
 	Type        *string `form:"type"`
 	Status      *string `form:"status"`
 	CapacityMin *int    `form:"capacity_min"`

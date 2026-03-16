@@ -18,6 +18,18 @@ type TokenProvider struct {
 	source oauth2.TokenSource
 }
 
+// NewTokenProvider creates a new token provider.
+//
+// Summary:
+// - Creates a new token provider.
+//
+// Attributes:
+// - cfg (Config): Input parameter.
+// - store (RefreshTokenStore): Input parameter.
+//
+// Returns:
+// - value1 (*TokenProvider): Returned value.
+// - value2 (error): Returned value.
 func NewTokenProvider(cfg Config, store RefreshTokenStore) (*TokenProvider, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -43,6 +55,17 @@ func NewTokenProvider(cfg Config, store RefreshTokenStore) (*TokenProvider, erro
 	}, nil
 }
 
+// Token tokens function behavior.
+//
+// Summary:
+// - Tokens function behavior.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (error): Returned value.
 func (p *TokenProvider) Token(ctx context.Context) (string, error) {
 	source, err := p.tokenSource(ctx)
 	if err != nil {
@@ -67,6 +90,17 @@ func (p *TokenProvider) Token(ctx context.Context) (string, error) {
 	return accessToken, nil
 }
 
+// tokenSource tokens source.
+//
+// Summary:
+// - Tokens source.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (oauth2.TokenSource): Returned value.
+// - value2 (error): Returned value.
 func (p *TokenProvider) tokenSource(ctx context.Context) (oauth2.TokenSource, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -92,6 +126,16 @@ func (p *TokenProvider) tokenSource(ctx context.Context) (oauth2.TokenSource, er
 	return source, nil
 }
 
+// classifyRefreshError classifies refresh error.
+//
+// Summary:
+// - Classifies refresh error.
+//
+// Attributes:
+// - err (error): Input parameter.
+//
+// Returns:
+// - value1 (error): Returned value.
 func classifyRefreshError(err error) error {
 	if err == nil {
 		return nil

@@ -27,6 +27,16 @@ type APIError struct {
 	Timestamp time.Time
 }
 
+// APIRoomWithNullCurrentEvent apis room with null current event.
+//
+// Summary:
+// - Apis room with null current event.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (APIRoom): Returned value.
 func APIRoomWithNullCurrentEvent() APIRoom {
 	return APIRoom{
 		Code:         "AMPHI-A",
@@ -46,6 +56,16 @@ func APIRoomWithNullCurrentEvent() APIRoom {
 	}
 }
 
+// APIErrorRoomNotFound apis error room not found.
+//
+// Summary:
+// - Apis error room not found.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (APIError): Returned value.
 func APIErrorRoomNotFound() APIError {
 	return APIError{
 		Code:      "ROOM_NOT_FOUND",
@@ -54,6 +74,16 @@ func APIErrorRoomNotFound() APIError {
 	}
 }
 
+// APIRoomsListSingleRoom apis rooms list single room.
+//
+// Summary:
+// - Apis rooms list single room.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 ([]APIRoom): Returned value.
 func APIRoomsListSingleRoom() []APIRoom {
 	room := APIRoomWithNullCurrentEvent()
 	room.NextEvent = nil

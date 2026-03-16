@@ -50,6 +50,19 @@ type roomEventsCacheEntry struct {
 	hasData     bool
 }
 
+// NewRoomEventsCache creates a new room events cache.
+//
+// Summary:
+// - Creates a new room events cache.
+//
+// Attributes:
+// - calendar (CalendarClient): Input parameter.
+// - ttl (time.Duration): Input parameter.
+// - clock (Clock): Input parameter.
+//
+// Returns:
+// - value1 (*RoomEventsCache): Returned value.
+// - value2 (error): Returned value.
 func NewRoomEventsCache(calendar CalendarClient, ttl time.Duration, clock Clock) (*RoomEventsCache, error) {
 	if calendar == nil {
 		return nil, errors.New("calendar client is required")
@@ -69,6 +82,18 @@ func NewRoomEventsCache(calendar CalendarClient, ttl time.Duration, clock Clock)
 	}, nil
 }
 
+// Get gets data.
+//
+// Summary:
+// - Gets data.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - key (RoomEventsKey): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
+// - value2 (error): Returned value.
 func (c *RoomEventsCache) Get(ctx context.Context, key RoomEventsKey) ([]Event, error) {
 	mapKey, normalizedKey, err := mapKeyFromRoomEventsKey(key)
 	if err != nil {
@@ -101,6 +126,16 @@ func (c *RoomEventsCache) Get(ctx context.Context, key RoomEventsKey) ([]Event, 
 	return cloneEvents(events), nil
 }
 
+// Metadata metadatas function behavior.
+//
+// Summary:
+// - Metadatas function behavior.
+//
+// Attributes:
+// - key (RoomEventsKey): Input parameter.
+//
+// Returns:
+// - value1 (RoomEventsCacheMetadata): Returned value.
 func (c *RoomEventsCache) Metadata(key RoomEventsKey) RoomEventsCacheMetadata {
 	mapKey, _, err := mapKeyFromRoomEventsKey(key)
 	if err != nil {
@@ -125,6 +160,16 @@ func (c *RoomEventsCache) Metadata(key RoomEventsKey) RoomEventsCacheMetadata {
 	}
 }
 
+// HealthState healths state.
+//
+// Summary:
+// - Healths state.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (RoomEventsCacheHealthState): Returned value.
 func (c *RoomEventsCache) HealthState() RoomEventsCacheHealthState {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -144,6 +189,16 @@ func (c *RoomEventsCache) HealthState() RoomEventsCacheHealthState {
 	return state
 }
 
+// Clear clears state.
+//
+// Summary:
+// - Clears state.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - None.
 func (c *RoomEventsCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -154,6 +209,19 @@ func (c *RoomEventsCache) Clear() {
 	c.lastSuccessfulRefreshAt = nil
 }
 
+// refresh refreshes function behavior.
+//
+// Summary:
+// - Refreshes function behavior.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - mapKey (string): Input parameter.
+// - key (RoomEventsKey): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
+// - value2 (error): Returned value.
 func (c *RoomEventsCache) refresh(ctx context.Context, mapKey string, key RoomEventsKey) ([]Event, error) {
 	now := c.clock.Now()
 
@@ -204,6 +272,18 @@ func (c *RoomEventsCache) refresh(ctx context.Context, mapKey string, key RoomEv
 	return cloneEvents(refreshed.events), nil
 }
 
+// mapKeyFromRoomEventsKey maps key from room events key.
+//
+// Summary:
+// - Maps key from room events key.
+//
+// Attributes:
+// - key (RoomEventsKey): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (RoomEventsKey): Returned value.
+// - value3 (error): Returned value.
 func mapKeyFromRoomEventsKey(key RoomEventsKey) (string, RoomEventsKey, error) {
 	normalized, err := normalizeRoomEventsKey(key)
 	if err != nil {
@@ -220,6 +300,17 @@ func mapKeyFromRoomEventsKey(key RoomEventsKey) (string, RoomEventsKey, error) {
 	return cacheKey, normalized, nil
 }
 
+// normalizeRoomEventsKey normalizes room events key.
+//
+// Summary:
+// - Normalizes room events key.
+//
+// Attributes:
+// - key (RoomEventsKey): Input parameter.
+//
+// Returns:
+// - value1 (RoomEventsKey): Returned value.
+// - value2 (error): Returned value.
 func normalizeRoomEventsKey(key RoomEventsKey) (RoomEventsKey, error) {
 	roomEmail := strings.TrimSpace(key.RoomEmail)
 	if roomEmail == "" {
@@ -239,6 +330,16 @@ func normalizeRoomEventsKey(key RoomEventsKey) (RoomEventsKey, error) {
 	}, nil
 }
 
+// cloneEvents clones events.
+//
+// Summary:
+// - Clones events.
+//
+// Attributes:
+// - events ([]Event): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func cloneEvents(events []Event) []Event {
 	if events == nil {
 		return nil

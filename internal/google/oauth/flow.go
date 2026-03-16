@@ -20,6 +20,18 @@ type AuthorizationFlow struct {
 	states      *stateStore
 }
 
+// NewAuthorizationFlow creates a new authorization flow.
+//
+// Summary:
+// - Creates a new authorization flow.
+//
+// Attributes:
+// - cfg (Config): Input parameter.
+// - store (RefreshTokenStore): Input parameter.
+//
+// Returns:
+// - value1 (*AuthorizationFlow): Returned value.
+// - value2 (error): Returned value.
 func NewAuthorizationFlow(cfg Config, store RefreshTokenStore) (*AuthorizationFlow, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -46,6 +58,18 @@ func NewAuthorizationFlow(cfg Config, store RefreshTokenStore) (*AuthorizationFl
 	}, nil
 }
 
+// Start starts function behavior.
+//
+// Summary:
+// - Starts function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (string): Returned value.
+// - value3 (error): Returned value.
 func (f *AuthorizationFlow) Start() (string, string, error) {
 	if f == nil || f.oauthConfig == nil {
 		return "", "", errors.New("oauth flow is not configured")
@@ -67,6 +91,18 @@ func (f *AuthorizationFlow) Start() (string, string, error) {
 	return authURL, state, nil
 }
 
+// Callback callbacks function behavior.
+//
+// Summary:
+// - Callbacks function behavior.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - state (string): Input parameter.
+// - code (string): Input parameter.
+//
+// Returns:
+// - value1 (error): Returned value.
 func (f *AuthorizationFlow) Callback(ctx context.Context, state, code string) error {
 	if f == nil || f.oauthConfig == nil {
 		return errors.New("oauth flow is not configured")
@@ -102,6 +138,17 @@ func (f *AuthorizationFlow) Callback(ctx context.Context, state, code string) er
 	return nil
 }
 
+// randomState randoms state.
+//
+// Summary:
+// - Randoms state.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (error): Returned value.
 func randomState() (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
@@ -117,6 +164,16 @@ type stateStore struct {
 	values map[string]time.Time
 }
 
+// newStateStore creates a new state store.
+//
+// Summary:
+// - Creates a new state store.
+//
+// Attributes:
+// - ttl (time.Duration): Input parameter.
+//
+// Returns:
+// - value1 (*stateStore): Returned value.
 func newStateStore(ttl time.Duration) *stateStore {
 	return &stateStore{
 		ttl:    ttl,
@@ -124,6 +181,16 @@ func newStateStore(ttl time.Duration) *stateStore {
 	}
 }
 
+// Put puts function behavior.
+//
+// Summary:
+// - Puts function behavior.
+//
+// Attributes:
+// - state (string): Input parameter.
+//
+// Returns:
+// - None.
 func (s *stateStore) Put(state string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -133,6 +200,16 @@ func (s *stateStore) Put(state string) {
 	s.values[strings.TrimSpace(state)] = now.Add(s.ttl)
 }
 
+// Consume consumes function behavior.
+//
+// Summary:
+// - Consumes function behavior.
+//
+// Attributes:
+// - state (string): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func (s *stateStore) Consume(state string) bool {
 	trimmed := strings.TrimSpace(state)
 	if trimmed == "" {
@@ -154,6 +231,16 @@ func (s *stateStore) Consume(state string) bool {
 	return true
 }
 
+// cleanupExpiredLocked cleanups expired locked.
+//
+// Summary:
+// - Cleanups expired locked.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - None.
 func (s *stateStore) cleanupExpiredLocked(now time.Time) {
 	for key, expiresAt := range s.values {
 		if !expiresAt.After(now) {
@@ -162,6 +249,16 @@ func (s *stateStore) cleanupExpiredLocked(now time.Time) {
 	}
 }
 
+// classifyExchangeError classifies exchange error.
+//
+// Summary:
+// - Classifies exchange error.
+//
+// Attributes:
+// - err (error): Input parameter.
+//
+// Returns:
+// - value1 (error): Returned value.
 func classifyExchangeError(err error) error {
 	if err == nil {
 		return nil
@@ -181,6 +278,17 @@ func classifyExchangeError(err error) error {
 	}
 }
 
+// BuildAuthorizationURLPreview builds authorization url preview.
+//
+// Summary:
+// - Builds authorization url preview.
+//
+// Attributes:
+// - cfg (Config): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (error): Returned value.
 func BuildAuthorizationURLPreview(cfg Config) (string, error) {
 	if err := cfg.Validate(); err != nil {
 		return "", err

@@ -10,6 +10,16 @@ import (
 
 var defaultHandler = NewHandler(NewService(nil, nil, nil, "dev"))
 
+// Handler handlers function behavior.
+//
+// Summary:
+// - Handlers function behavior.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - None.
 func Handler(c *gin.Context) {
 	defaultHandler(c)
 }
@@ -32,6 +42,16 @@ type handler struct {
 	service domain.HealthService
 }
 
+// handle handles function behavior.
+//
+// Summary:
+// - Handles function behavior.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - None.
 func (h *handler) handle(c *gin.Context) {
 	if h.service == nil {
 		api.WriteError(c, api.NewHTTPError(

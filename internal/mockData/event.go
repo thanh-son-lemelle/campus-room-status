@@ -9,6 +9,16 @@ type Event struct {
 	Organizer string
 }
 
+// RoomServiceEventsByRoom rooms service events by room.
+//
+// Summary:
+// - Rooms service events by room.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 (map[string][]Event): Returned value.
 func RoomServiceEventsByRoom(now time.Time) map[string][]Event {
 	return map[string][]Event{
 		"AMPHI-A": {
@@ -34,6 +44,16 @@ func RoomServiceEventsByRoom(now time.Time) map[string][]Event {
 	}
 }
 
+// DetailOrderedEvents details ordered events.
+//
+// Summary:
+// - Details ordered events.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func DetailOrderedEvents(now time.Time) []Event {
 	return []Event{
 		{Title: "Third", Start: now.Add(2 * time.Hour), End: now.Add(3 * time.Hour)},
@@ -42,6 +62,16 @@ func DetailOrderedEvents(now time.Time) []Event {
 	}
 }
 
+// ScheduleOrderedEvents schedules ordered events.
+//
+// Summary:
+// - Schedules ordered events.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func ScheduleOrderedEvents(now time.Time) []Event {
 	return []Event{
 		{Title: "Third", Start: now.Add(4 * time.Hour), End: now.Add(5 * time.Hour)},
@@ -50,6 +80,16 @@ func ScheduleOrderedEvents(now time.Time) []Event {
 	}
 }
 
+// CacheEvents caches events.
+//
+// Summary:
+// - Caches events.
+//
+// Attributes:
+// - title (string): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func CacheEvents(title string) []Event {
 	start := time.Date(2026, time.March, 10, 8, 0, 0, 0, time.UTC)
 	return []Event{
@@ -62,6 +102,16 @@ func CacheEvents(title string) []Event {
 	}
 }
 
+// OccupiedEvent occupieds event.
+//
+// Summary:
+// - Occupieds event.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func OccupiedEvent(now time.Time) []Event {
 	return []Event{{
 		Title: "Current Event",
@@ -70,6 +120,16 @@ func OccupiedEvent(now time.Time) []Event {
 	}}
 }
 
+// UpcomingEvent upcomings event.
+//
+// Summary:
+// - Upcomings event.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func UpcomingEvent(now time.Time) []Event {
 	return []Event{{
 		Title: "Distributed Systems",
@@ -78,6 +138,16 @@ func UpcomingEvent(now time.Time) []Event {
 	}}
 }
 
+// FutureEvent futures event.
+//
+// Summary:
+// - Futures event.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func FutureEvent(now time.Time) []Event {
 	return []Event{{
 		Title: "Future Session",
@@ -86,6 +156,16 @@ func FutureEvent(now time.Time) []Event {
 	}}
 }
 
+// NoonSessionEvent noons session event.
+//
+// Summary:
+// - Noons session event.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]Event): Returned value.
 func NoonSessionEvent(now time.Time) []Event {
 	return []Event{{
 		Title: "Noon Session",
