@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"campus-room-status/internal/domain"
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestService_ReturnsBuildingsFromInventoryCache(t *testing.T) {
@@ -13,14 +14,7 @@ func TestService_ReturnsBuildingsFromInventoryCache(t *testing.T) {
 	clock := &serviceClock{now: now}
 	source := &serviceInventorySource{
 		snapshot: domain.InventorySnapshot{
-			Buildings: []domain.Building{
-				{
-					ID:      "B1",
-					Name:    "Building A",
-					Address: "1 Campus Street",
-					Floors:  []int{0, 1, 2},
-				},
-			},
+			Buildings: []domain.Building{domainBuildingFromMock(mockdata.BuildingB1())},
 		},
 	}
 

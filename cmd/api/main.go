@@ -12,8 +12,12 @@ import (
 // @BasePath /
 // @schemes http https
 func main() {
-	r := app.NewRouter()
+	loadDotEnvIfPresent()
 
+	r := app.NewRouter()
+	maybeAutoLaunchOAuthConsent()
+
+	// TODO(prod): externalize listen address/port and run behind TLS/reverse proxy.
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("failed to run server: %v", err)
 	}

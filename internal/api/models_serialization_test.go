@@ -4,25 +4,12 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestRoomResponse_CurrentEventCanBeNullInJSON(t *testing.T) {
-	room := RoomResponse{
-		Code:         "AMPHI-A",
-		Name:         "Amphitheater A",
-		Building:     "B1",
-		Floor:        1,
-		Capacity:     180,
-		Type:         "amphitheater",
-		Status:       "available",
-		CurrentEvent: nil,
-		NextEvent: &EventResponse{
-			Title:     "Next Session",
-			Start:     time.Date(2026, time.March, 10, 14, 0, 0, 0, time.UTC),
-			End:       time.Date(2026, time.March, 10, 16, 0, 0, 0, time.UTC),
-			Organizer: "Academic Office",
-		},
-	}
+	room := roomResponseFromMock(mockdata.APIRoomWithNullCurrentEvent())
 
 	raw, err := json.Marshal(room)
 	if err != nil {
@@ -45,11 +32,7 @@ func TestRoomResponse_CurrentEventCanBeNullInJSON(t *testing.T) {
 
 func TestErrorEnvelope_JSONFormatIsStandard(t *testing.T) {
 	errPayload := ErrorEnvelope{
-		Error: ErrorResponse{
-			Code:      "ROOM_NOT_FOUND",
-			Message:   "room AMPHI-X not found",
-			Timestamp: time.Date(2026, time.March, 10, 11, 30, 0, 0, time.UTC),
-		},
+		Error: errorResponseFromMock(mockdata.APIErrorRoomNotFound()),
 	}
 
 	raw, err := json.Marshal(errPayload)
@@ -92,25 +75,19 @@ func TestErrorEnvelope_JSONFormatIsStandard(t *testing.T) {
 }
 
 func TestRoomsListResponse_JSONShapeContainsTimestampFiltersCountAndRooms(t *testing.T) {
+	mockRooms := mockdata.APIRoomsListSingleRoom()
+	rooms := make([]RoomResponse, len(mockRooms))
+	for i := range mockRooms {
+		rooms[i] = roomResponseFromMock(mockRooms[i])
+	}
+
 	payload := RoomsListResponse{
 		Timestamp: time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC),
 		Filters: map[string]any{
 			"building": "B1",
 		},
 		Count: 1,
-		Rooms: []RoomResponse{
-			{
-				Code:         "AMPHI-A",
-				Name:         "Amphitheater A",
-				Building:     "B1",
-				Floor:        1,
-				Capacity:     180,
-				Type:         "amphitheater",
-				Status:       "available",
-				CurrentEvent: nil,
-				NextEvent:    nil,
-			},
-		},
+		Rooms: rooms,
 	}
 
 	raw, err := json.Marshal(payload)
@@ -134,5 +111,39 @@ func TestRoomsListResponse_JSONShapeContainsTimestampFiltersCountAndRooms(t *tes
 	}
 	if _, ok := data["rooms"].([]any); !ok {
 		t.Fatalf("expected rooms to be an array")
+	}
+}
+
+func roomResponseFromMock(room mockdata.APIRoom) RoomResponse {
+	return RoomResponse{
+		Code:         room.Code,
+		Name:         room.Name,
+		Building:     room.Building,
+		Floor:        room.Floor,
+		Capacity:     room.Capacity,
+		Type:         room.Type,
+		Status:       room.Status,
+		CurrentEvent: eventResponsePtrFromMock(room.CurrentEvent),
+		NextEvent:    eventResponsePtrFromMock(room.NextEvent),
+	}
+}
+
+func eventResponsePtrFromMock(event *mockdata.APIEvent) *EventResponse {
+	if event == nil {
+		return nil
+	}
+	return &EventResponse{
+		Title:     event.Title,
+		Start:     event.Start,
+		End:       event.End,
+		Organizer: event.Organizer,
+	}
+}
+
+func errorResponseFromMock(err mockdata.APIError) ErrorResponse {
+	return ErrorResponse{
+		Code:      err.Code,
+		Message:   err.Message,
+		Timestamp: err.Timestamp,
 	}
 }

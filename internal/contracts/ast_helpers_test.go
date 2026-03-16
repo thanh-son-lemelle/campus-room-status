@@ -36,29 +36,38 @@ func parsePackage(t *testing.T, relDir string) parsedPackage {
 	}
 
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(
-		fset,
-		absDir,
-		func(fi os.FileInfo) bool { return !strings.HasSuffix(fi.Name(), "_test.go") },
-		parser.ParseComments,
-	)
+	entries, err := os.ReadDir(absDir)
 	if err != nil {
-		t.Fatalf("failed to parse package in %q: %v", relDir, err)
-	}
-	if len(pkgs) == 0 {
-		t.Fatalf("no package found in %q", relDir)
+		t.Fatalf("failed to read package directory %q: %v", relDir, err)
 	}
 
-	var selected *ast.Package
-	for _, pkg := range pkgs {
-		selected = pkg
-		break
-	}
-
-	files := make([]*ast.File, 0, len(selected.Files))
+	var selectedPackageName string
+	files := make([]*ast.File, 0, len(entries))
 	typeSpecs := make(map[string]*ast.TypeSpec)
 
-	for _, file := range selected.Files {
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		fileName := entry.Name()
+		if !strings.HasSuffix(fileName, ".go") || strings.HasSuffix(fileName, "_test.go") {
+			continue
+		}
+
+		filePath := filepath.Join(absDir, fileName)
+		file, parseErr := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
+		if parseErr != nil {
+			t.Fatalf("failed to parse file %q: %v", filePath, parseErr)
+		}
+
+		if selectedPackageName == "" {
+			selectedPackageName = file.Name.Name
+		}
+		if file.Name.Name != selectedPackageName {
+			continue
+		}
+
 		files = append(files, file)
 
 		for _, decl := range file.Decls {
@@ -75,6 +84,9 @@ func parsePackage(t *testing.T, relDir string) parsedPackage {
 				typeSpecs[typeSpec.Name.Name] = typeSpec
 			}
 		}
+	}
+	if len(files) == 0 {
+		t.Fatalf("no non-test Go file found in %q", relDir)
 	}
 
 	return parsedPackage{

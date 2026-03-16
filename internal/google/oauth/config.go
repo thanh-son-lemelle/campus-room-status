@@ -23,6 +23,17 @@ type Config struct {
 	TokenURL         string
 }
 
+// LoadConfigFromEnv loads config from env.
+//
+// Summary:
+// - Loads config from env.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (Config): Returned value.
+// - value2 (error): Returned value.
 func LoadConfigFromEnv() (Config, error) {
 	cfg := Config{
 		ClientID:         strings.TrimSpace(os.Getenv("GOOGLE_OAUTH_CLIENT_ID")),
@@ -48,6 +59,16 @@ func LoadConfigFromEnv() (Config, error) {
 	return cfg, nil
 }
 
+// Validate validates function behavior.
+//
+// Summary:
+// - Validates function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (error): Returned value.
 func (c Config) Validate() error {
 	if strings.TrimSpace(c.ClientID) == "" {
 		return errors.New("missing GOOGLE_OAUTH_CLIENT_ID")
@@ -68,6 +89,16 @@ func (c Config) Validate() error {
 	return nil
 }
 
+// parseScopes parses scopes.
+//
+// Summary:
+// - Parses scopes.
+//
+// Attributes:
+// - raw (string): Input parameter.
+//
+// Returns:
+// - value1 ([]string): Returned value.
 func parseScopes(raw string) []string {
 	if strings.TrimSpace(raw) == "" {
 		return nil

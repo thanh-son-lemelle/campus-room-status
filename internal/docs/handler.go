@@ -11,12 +11,32 @@ import (
 //go:embed swagger.json
 var swaggerJSON []byte
 
+// SpecJSON specs json.
+//
+// Summary:
+// - Specs json.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 ([]byte): Returned value.
 func SpecJSON() []byte {
 	out := make([]byte, len(swaggerJSON))
 	copy(out, swaggerJSON)
 	return out
 }
 
+// NewOpenAPIHandler creates a new open api handler.
+//
+// Summary:
+// - Creates a new open api handler.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (gin.HandlerFunc): Returned value.
 func NewOpenAPIHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Data(http.StatusOK, "application/json; charset=utf-8", swaggerJSON)

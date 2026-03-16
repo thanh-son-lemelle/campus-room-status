@@ -25,6 +25,16 @@ type HTTPError struct {
 	Message string
 }
 
+// Error errors function behavior.
+//
+// Summary:
+// - Errors function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (string): Returned value.
 func (e *HTTPError) Error() string {
 	if e == nil {
 		return ""
@@ -32,6 +42,18 @@ func (e *HTTPError) Error() string {
 	return e.Message
 }
 
+// NewHTTPError creates a new http error.
+//
+// Summary:
+// - Creates a new http error.
+//
+// Attributes:
+// - status (int): Input parameter.
+// - code (string): Input parameter.
+// - message (string): Input parameter.
+//
+// Returns:
+// - value1 (*HTTPError): Returned value.
 func NewHTTPError(status int, code string, message string) *HTTPError {
 	return &HTTPError{
 		Status:  status,
@@ -40,11 +62,33 @@ func NewHTTPError(status int, code string, message string) *HTTPError {
 	}
 }
 
+// WriteError writes error.
+//
+// Summary:
+// - Writes error.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+// - err (error): Input parameter.
+//
+// Returns:
+// - None.
 func WriteError(c *gin.Context, err error) {
 	status, payload := mapError(err)
 	c.AbortWithStatusJSON(status, payload)
 }
 
+// mapError maps error.
+//
+// Summary:
+// - Maps error.
+//
+// Attributes:
+// - err (error): Input parameter.
+//
+// Returns:
+// - value1 (int): Returned value.
+// - value2 (ErrorEnvelope): Returned value.
 func mapError(err error) (int, ErrorEnvelope) {
 	if err == nil {
 		return http.StatusInternalServerError, errorEnvelope(ErrorCodeInternalServerError, "Une erreur interne est survenue")
@@ -90,7 +134,7 @@ func mapError(err error) (int, ErrorEnvelope) {
 
 	var serviceUnavailableErr *domain.ServiceUnavailableError
 	if errors.As(err, &serviceUnavailableErr) {
-		if strings.EqualFold(serviceUnavailableErr.Service, "google") {
+		if domain.IsServiceUnavailableFromProvider(err, domain.UnavailableProviderGoogle) {
 			return http.StatusServiceUnavailable, errorEnvelope(ErrorCodeGoogleServiceUnavailable, "Service Google indisponible")
 		}
 		return http.StatusServiceUnavailable, errorEnvelope(ErrorCodeServiceUnavailable, "Service indisponible")
@@ -99,6 +143,17 @@ func mapError(err error) (int, ErrorEnvelope) {
 	return http.StatusInternalServerError, errorEnvelope(ErrorCodeInternalServerError, "Une erreur interne est survenue")
 }
 
+// errorEnvelope errors envelope.
+//
+// Summary:
+// - Errors envelope.
+//
+// Attributes:
+// - code (string): Input parameter.
+// - message (string): Input parameter.
+//
+// Returns:
+// - value1 (ErrorEnvelope): Returned value.
 func errorEnvelope(code string, message string) ErrorEnvelope {
 	return ErrorEnvelope{
 		Error: ErrorResponse{

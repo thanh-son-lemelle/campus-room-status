@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestInventoryCache_WarmupAtStartup(t *testing.T) {
@@ -213,6 +215,75 @@ func TestInventoryCache_ExposesDegradedStateForHealth(t *testing.T) {
 	}
 }
 
+func TestInventoryCache_ForceRefreshBypassesTTL(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 19, 0, 0, 0, time.UTC)
+	ttl := time.Hour
+	clock := &fakeClock{now: now}
+	source := &fakeInventorySource{
+		snapshots: []InventorySnapshot{
+			snapshotFixture("B1", "AMPHI-A"),
+			snapshotFixture("B2", "LAB-204"),
+		},
+	}
+
+	cache, err := NewInventoryCache(context.Background(), source, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	clock.Advance(10 * time.Minute)
+	if err := cache.ForceRefresh(context.Background()); err != nil {
+		t.Fatalf("expected force refresh to succeed, got %v", err)
+	}
+
+	if source.Calls() != 2 {
+		t.Fatalf("expected warmup + force refresh calls, got %d", source.Calls())
+	}
+
+	got, err := cache.GetInventory(context.Background())
+	if err != nil {
+		t.Fatalf("expected cache read after force refresh to succeed, got %v", err)
+	}
+	if len(got.Rooms) != 1 || got.Rooms[0].Code != "LAB-204" {
+		t.Fatalf("expected refreshed room LAB-204, got %+v", got.Rooms)
+	}
+}
+
+func TestInventoryCache_ForceRefreshReturnsErrorWhenSourceFails(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 20, 0, 0, 0, time.UTC)
+	ttl := time.Hour
+	clock := &fakeClock{now: now}
+	source := &fakeInventorySource{
+		snapshots: []InventorySnapshot{
+			snapshotFixture("B1", "AMPHI-A"),
+		},
+	}
+
+	cache, err := NewInventoryCache(context.Background(), source, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	source.SetError(errors.New("upstream unavailable"))
+	clock.Advance(5 * time.Minute)
+	if err := cache.ForceRefresh(context.Background()); err == nil {
+		t.Fatalf("expected force refresh to return error when source fails")
+	}
+
+	got, err := cache.GetInventory(context.Background())
+	if err != nil {
+		t.Fatalf("expected stale data read after force refresh error to succeed, got %v", err)
+	}
+	if len(got.Rooms) != 1 || got.Rooms[0].Code != "AMPHI-A" {
+		t.Fatalf("expected stale room AMPHI-A, got %+v", got.Rooms)
+	}
+
+	health := cache.HealthState()
+	if !health.Degraded {
+		t.Fatalf("expected degraded state after force refresh failure")
+	}
+}
+
 type fakeClock struct {
 	now time.Time
 }
@@ -266,25 +337,5 @@ func (s *fakeInventorySource) SetError(err error) {
 }
 
 func snapshotFixture(buildingID string, roomCode string) InventorySnapshot {
-	return InventorySnapshot{
-		Buildings: []Building{
-			{
-				ID:      buildingID,
-				Name:    "Building " + buildingID,
-				Address: "1 Campus Street",
-				Floors:  []int{0, 1, 2},
-			},
-		},
-		Rooms: []Room{
-			{
-				Code:     roomCode,
-				Name:     "Room " + roomCode,
-				Building: buildingID,
-				Floor:    1,
-				Capacity: 30,
-				Type:     "lab",
-				Status:   "available",
-			},
-		},
-	}
+	return domainInventorySnapshotFromMock(mockdata.InventorySnapshotFixture(buildingID, roomCode))
 }

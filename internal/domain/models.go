@@ -6,7 +6,7 @@ type Building struct {
 	ID      string
 	Name    string
 	Address string
-	Floors  []int
+	Floors  []string
 }
 
 type Event struct {

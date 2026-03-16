@@ -1,20 +1,27 @@
 package rooms
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"campus-room-status/internal/domain"
 	"github.com/gin-gonic/gin"
 )
+
+var testRoomService domain.RoomService = handlerTestRoomService{}
+var listHandlerForTests = NewListHandler(testRoomService, nil)
+var detailHandlerForTests = NewDetailHandler(testRoomService)
+var scheduleHandlerForTests = NewScheduleHandler(testRoomService)
 
 func TestListHandler_ReturnsOKWithoutFilters(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms", ListHandler)
+	r.GET("/rooms", listHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms", nil)
 	w := httptest.NewRecorder()
@@ -30,7 +37,7 @@ func TestListHandler_ReturnsExpectedContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms", ListHandler)
+	r.GET("/rooms", listHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms", nil)
 	w := httptest.NewRecorder()
@@ -152,7 +159,7 @@ func TestListHandler_AcceptsOptionalFilters(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms", ListHandler)
+	r.GET("/rooms", listHandlerForTests)
 
 	req := httptest.NewRequest(
 		http.MethodGet,
@@ -197,7 +204,7 @@ func TestListHandler_FiltersByBuilding(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms", ListHandler)
+	r.GET("/rooms", listHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms?building=B1", nil)
 	w := httptest.NewRecorder()
@@ -234,7 +241,7 @@ func TestListHandler_SortAndOrder(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms", ListHandler)
+	r.GET("/rooms", listHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms?sort=capacity&order=desc", nil)
 	w := httptest.NewRecorder()
@@ -278,7 +285,7 @@ func TestListHandler_ReturnsBadRequestWhenSortIsInvalid(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms", ListHandler)
+	r.GET("/rooms", listHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms?sort=invalid", nil)
 	w := httptest.NewRecorder()
@@ -308,7 +315,7 @@ func TestListHandler_ReturnsBadRequestWhenCapacityMinGreaterThanCapacityMax(t *t
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms", ListHandler)
+	r.GET("/rooms", listHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms?capacity_min=200&capacity_max=100", nil)
 	w := httptest.NewRecorder()
@@ -338,7 +345,7 @@ func TestDetailHandler_ReturnsOK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code", DetailHandler)
+	r.GET("/rooms/:code", detailHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A", nil)
 	w := httptest.NewRecorder()
@@ -354,7 +361,7 @@ func TestDetailHandler_ReturnsExpectedContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code", DetailHandler)
+	r.GET("/rooms/:code", detailHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A", nil)
 	w := httptest.NewRecorder()
@@ -432,7 +439,7 @@ func TestDetailHandler_ReturnsRoomNotFoundForUnknownCode(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code", DetailHandler)
+	r.GET("/rooms/:code", detailHandlerForTests)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms/UNKNOWN-ROOM", nil)
 	w := httptest.NewRecorder()
@@ -466,11 +473,11 @@ func TestScheduleHandler_ReturnsOK(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code/schedule", ScheduleHandler)
+	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/rooms/AMPHI-A/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		"/rooms/AMPHI-A/schedule?start=2026-03-09&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()
@@ -486,10 +493,10 @@ func TestScheduleHandler_ReturnsExpectedContract(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code/schedule", ScheduleHandler)
+	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
-	start := "2026-03-09T08:00:00Z"
-	end := "2026-03-09T18:00:00Z"
+	start := "2026-03-09"
+	end := "2026-03-09"
 	req := httptest.NewRequest(
 		http.MethodGet,
 		"/rooms/AMPHI-A/schedule?start="+start+"&end="+end,
@@ -531,8 +538,8 @@ func TestScheduleHandler_ReturnsExpectedContract(t *testing.T) {
 	if startValue != start {
 		t.Fatalf("expected period.start %q, got %q", start, startValue)
 	}
-	if _, err := time.Parse(time.RFC3339, startValue); err != nil {
-		t.Fatalf("expected period.start to be RFC3339, got %q: %v", startValue, err)
+	if _, err := time.Parse(scheduleDateLayout, startValue); err != nil {
+		t.Fatalf("expected period.start to be YYYY-MM-DD, got %q: %v", startValue, err)
 	}
 
 	endValue, ok := period["end"].(string)
@@ -542,8 +549,8 @@ func TestScheduleHandler_ReturnsExpectedContract(t *testing.T) {
 	if endValue != end {
 		t.Fatalf("expected period.end %q, got %q", end, endValue)
 	}
-	if _, err := time.Parse(time.RFC3339, endValue); err != nil {
-		t.Fatalf("expected period.end to be RFC3339, got %q: %v", endValue, err)
+	if _, err := time.Parse(scheduleDateLayout, endValue); err != nil {
+		t.Fatalf("expected period.end to be YYYY-MM-DD, got %q: %v", endValue, err)
 	}
 
 	events, ok := payload["events"].([]any)
@@ -564,9 +571,9 @@ func TestScheduleHandler_ReturnsBadRequestWhenStartIsMissing(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code/schedule", ScheduleHandler)
+	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
-	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?end=2026-03-09T18:00:00Z", nil)
+	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?end=2026-03-09", nil)
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)
@@ -580,9 +587,9 @@ func TestScheduleHandler_ReturnsBadRequestWhenEndIsMissing(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code/schedule", ScheduleHandler)
+	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
-	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?start=2026-03-09T08:00:00Z", nil)
+	req := httptest.NewRequest(http.MethodGet, "/rooms/AMPHI-A/schedule?start=2026-03-09", nil)
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)
@@ -596,11 +603,11 @@ func TestScheduleHandler_ReturnsBadRequestWhenStartIsAfterEnd(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code/schedule", ScheduleHandler)
+	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/rooms/AMPHI-A/schedule?start=2026-03-09T20:00:00Z&end=2026-03-09T18:00:00Z",
+		"/rooms/AMPHI-A/schedule?start=2026-03-10&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()
@@ -616,11 +623,11 @@ func TestScheduleHandler_ReturnsNotFoundForUnknownRoom(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	r := gin.New()
-	r.GET("/rooms/:code/schedule", ScheduleHandler)
+	r.GET("/rooms/:code/schedule", scheduleHandlerForTests)
 
 	req := httptest.NewRequest(
 		http.MethodGet,
-		"/rooms/UNKNOWN/schedule?start=2026-03-09T08:00:00Z&end=2026-03-09T18:00:00Z",
+		"/rooms/UNKNOWN/schedule?start=2026-03-09&end=2026-03-09",
 		nil,
 	)
 	w := httptest.NewRecorder()
@@ -661,5 +668,99 @@ func assertEventContract(t *testing.T, event map[string]any, fieldName string) {
 
 	if _, ok := event["organizer"].(string); !ok {
 		t.Fatalf("expected %s.organizer to be a string", fieldName)
+	}
+}
+
+type handlerTestRoomService struct{}
+
+func (handlerTestRoomService) ListRooms(_ context.Context, filters domain.RoomFilters) ([]domain.Room, error) {
+	return domain.FilterAndSortRooms(handlerTestRooms(), filters)
+}
+
+func (handlerTestRoomService) GetRoomDetail(_ context.Context, code string) (domain.Room, []domain.Event, error) {
+	for _, room := range handlerTestRooms() {
+		if room.Code != code {
+			continue
+		}
+
+		scheduleToday := make([]domain.Event, 0, 2)
+		if room.CurrentEvent != nil {
+			scheduleToday = append(scheduleToday, *room.CurrentEvent)
+		}
+		if room.NextEvent != nil {
+			scheduleToday = append(scheduleToday, *room.NextEvent)
+		}
+
+		return room, scheduleToday, nil
+	}
+
+	return domain.Room{}, nil, &domain.RoomNotFoundError{RoomCode: code}
+}
+
+func (handlerTestRoomService) GetRoomSchedule(_ context.Context, code string, start time.Time, end time.Time) ([]domain.Event, error) {
+	if code != "AMPHI-A" && code != "LAB-204" {
+		return nil, &domain.RoomNotFoundError{RoomCode: code}
+	}
+
+	room, _, err := handlerTestRoomService{}.GetRoomDetail(context.Background(), code)
+	if err != nil {
+		return nil, err
+	}
+
+	events := make([]domain.Event, 0, 2)
+	if room.CurrentEvent != nil {
+		events = append(events, *room.CurrentEvent)
+	}
+	if room.NextEvent != nil {
+		events = append(events, *room.NextEvent)
+	}
+
+	filtered := make([]domain.Event, 0, len(events))
+	for _, event := range events {
+		if event.End.After(start) && event.Start.Before(end) {
+			filtered = append(filtered, event)
+		}
+	}
+
+	return filtered, nil
+}
+
+func handlerTestRooms() []domain.Room {
+	nextEvent := &domain.Event{
+		Title:     "Capstone Review",
+		Start:     time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC),
+		End:       time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC),
+		Organizer: "Academic Board",
+	}
+	currentEvent := &domain.Event{
+		Title:     "OS Lab Session",
+		Start:     time.Date(2026, time.March, 9, 10, 0, 0, 0, time.UTC),
+		End:       time.Date(2026, time.March, 9, 12, 0, 0, 0, time.UTC),
+		Organizer: "Systems Team",
+	}
+
+	return []domain.Room{
+		{
+			Code:         "AMPHI-A",
+			Name:         "Amphitheater A",
+			Building:     "B1",
+			Floor:        1,
+			Capacity:     180,
+			Type:         "amphitheater",
+			Status:       "available",
+			CurrentEvent: nil,
+			NextEvent:    nextEvent,
+		},
+		{
+			Code:         "LAB-204",
+			Name:         "Computer Lab 204",
+			Building:     "B2",
+			Floor:        2,
+			Capacity:     30,
+			Type:         "lab",
+			Status:       "occupied",
+			CurrentEvent: currentEvent,
+			NextEvent:    nil,
+		},
 	}
 }

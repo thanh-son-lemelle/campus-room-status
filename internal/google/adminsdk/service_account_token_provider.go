@@ -18,6 +18,17 @@ type ServiceAccountTokenProviderConfig struct {
 	Scopes          []string
 }
 
+// NewServiceAccountTokenProvider creates a new service account token provider.
+//
+// Summary:
+// - Creates a new service account token provider.
+//
+// Attributes:
+// - cfg (ServiceAccountTokenProviderConfig): Input parameter.
+//
+// Returns:
+// - value1 (TokenProvider): Returned value.
+// - value2 (error): Returned value.
 func NewServiceAccountTokenProvider(cfg ServiceAccountTokenProviderConfig) (TokenProvider, error) {
 	credentialsJSON := strings.TrimSpace(string(cfg.CredentialsJSON))
 	if credentialsJSON == "" {
@@ -53,6 +64,17 @@ type serviceAccountTokenProvider struct {
 	source oauth2.TokenSource
 }
 
+// Token tokens function behavior.
+//
+// Summary:
+// - Tokens function behavior.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (error): Returned value.
 func (p *serviceAccountTokenProvider) Token(ctx context.Context) (string, error) {
 	p.mu.Lock()
 	if p.source == nil {

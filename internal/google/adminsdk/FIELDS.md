@@ -20,7 +20,7 @@ Mapped building fields:
 - `buildingId` -> `domain.Building.ID`
 - `buildingName` -> `domain.Building.Name`
 - `address.addressLines/locality/administrativeArea/postalCode/regionCode` -> `domain.Building.Address`
-- `floorNames` (numeric values only) -> `domain.Building.Floors`
+- `floorNames` (preserved labels, e.g. `RDC`) -> `domain.Building.Floors`
 
 Mapped room fields:
 

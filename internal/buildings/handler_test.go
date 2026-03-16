@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"campus-room-status/internal/domain"
+	mockdata "campus-room-status/internal/mockData"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,14 +19,7 @@ func TestHandler_ReturnsTimestampAndBuildings(t *testing.T) {
 
 	now := time.Date(2026, time.March, 10, 18, 0, 0, 0, time.UTC)
 	service := &fakeBuildingService{
-		buildings: []domain.Building{
-			{
-				ID:      "B1",
-				Name:    "Building A",
-				Address: "1 Campus Street",
-				Floors:  []int{0, 1, 2},
-			},
-		},
+		buildings: []domain.Building{domainBuildingFromMock(mockdata.BuildingB1())},
 	}
 
 	r := gin.New()
@@ -105,8 +99,8 @@ func TestHandler_ReturnsTimestampAndBuildings(t *testing.T) {
 		}
 
 		for j, floor := range floors {
-			if _, ok := floor.(float64); !ok {
-				t.Fatalf("expected buildings[%d].floors[%d] to be numeric, got %T", i, j, floor)
+			if _, ok := floor.(string); !ok {
+				t.Fatalf("expected buildings[%d].floors[%d] to be a string, got %T", i, j, floor)
 			}
 		}
 	}
@@ -120,14 +114,7 @@ func TestHandler_Returns200WhenSourceFailsButCacheHasData(t *testing.T) {
 	clock := &mutableClock{now: now}
 	source := &fakeInventorySource{
 		snapshot: domain.InventorySnapshot{
-			Buildings: []domain.Building{
-				{
-					ID:      "B2",
-					Name:    "Building B",
-					Address: "2 Campus Street",
-					Floors:  []int{0, 1, 2, 3},
-				},
-			},
+			Buildings: []domain.Building{domainBuildingFromMock(mockdata.BuildingB2())},
 		},
 	}
 

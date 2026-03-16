@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	mockdata "campus-room-status/internal/mockData"
 )
 
 type testClock struct {
@@ -31,17 +33,8 @@ func TestStatusInterpreter_ReturnsOccupiedWhenEventIsInProgress(t *testing.T) {
 	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
 	interpreter := NewStatusInterpreter(testClock{now: now}, nil)
 
-	room := DirectoryRoom{
-		ResourceName:  "AMPHI-A",
-		ResourceEmail: "amphi-a@example.org",
-	}
-	events := []Event{
-		{
-			Title: "Algorithms",
-			Start: now.Add(-10 * time.Minute),
-			End:   now.Add(20 * time.Minute),
-		},
-	}
+	room := domainDirectoryRoomFromMock(mockdata.DirectoryRoomAmphiA())
+	events := domainEventsFromMock(mockdata.RoomServiceEventsByRoom(now)["AMPHI-A"][:1])
 
 	status := interpreter.Resolve(context.Background(), room, events)
 	if status != RoomStatusOccupied {
@@ -53,17 +46,8 @@ func TestStatusInterpreter_ReturnsUpcomingWhenNextEventStartsInLessThanThirtyMin
 	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
 	interpreter := NewStatusInterpreter(testClock{now: now}, nil)
 
-	room := DirectoryRoom{
-		ResourceName:  "AMPHI-A",
-		ResourceEmail: "amphi-a@example.org",
-	}
-	events := []Event{
-		{
-			Title: "Distributed Systems",
-			Start: now.Add(29*time.Minute + 30*time.Second),
-			End:   now.Add(89 * time.Minute),
-		},
-	}
+	room := domainDirectoryRoomFromMock(mockdata.DirectoryRoomAmphiA())
+	events := domainEventsFromMock(mockdata.UpcomingEvent(now))
 
 	status := interpreter.Resolve(context.Background(), room, events)
 	if status != RoomStatusUpcoming {
@@ -75,17 +59,8 @@ func TestStatusInterpreter_ReturnsAvailableWhenNoCurrentOrImminentEvent(t *testi
 	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
 	interpreter := NewStatusInterpreter(testClock{now: now}, nil)
 
-	room := DirectoryRoom{
-		ResourceName:  "AMPHI-A",
-		ResourceEmail: "amphi-a@example.org",
-	}
-	events := []Event{
-		{
-			Title: "Future Session",
-			Start: now.Add(45 * time.Minute),
-			End:   now.Add(2 * time.Hour),
-		},
-	}
+	room := domainDirectoryRoomFromMock(mockdata.DirectoryRoomAmphiA())
+	events := domainEventsFromMock(mockdata.FutureEvent(now))
 
 	status := interpreter.Resolve(context.Background(), room, events)
 	if status != RoomStatusAvailable {
@@ -100,17 +75,8 @@ func TestStatusInterpreter_ReturnsMaintenanceWhenExternalUnavailabilitySourceSay
 		fakeUnavailabilitySource{unavailable: true},
 	)
 
-	room := DirectoryRoom{
-		ResourceName:  "AMPHI-A",
-		ResourceEmail: "amphi-a@example.org",
-	}
-	events := []Event{
-		{
-			Title: "Current Event",
-			Start: now.Add(-5 * time.Minute),
-			End:   now.Add(5 * time.Minute),
-		},
-	}
+	room := domainDirectoryRoomFromMock(mockdata.DirectoryRoomAmphiA())
+	events := domainEventsFromMock(mockdata.OccupiedEvent(now))
 
 	status := interpreter.Resolve(context.Background(), room, events)
 	if status != RoomStatusMaintenance {
@@ -122,18 +88,8 @@ func TestStatusInterpreter_DoesNotInventMaintenanceWhenNoReliableSourceExists(t 
 	now := time.Date(2026, time.March, 10, 10, 0, 0, 0, time.UTC)
 	interpreter := NewStatusInterpreter(testClock{now: now}, nil)
 
-	room := DirectoryRoom{
-		ResourceName:     "AMPHI-A",
-		ResourceEmail:    "amphi-a@example.org",
-		ResourceCategory: "maintenance",
-	}
-	events := []Event{
-		{
-			Title: "Noon Session",
-			Start: now.Add(3 * time.Hour),
-			End:   now.Add(4 * time.Hour),
-		},
-	}
+	room := domainDirectoryRoomFromMock(mockdata.DirectoryRoomAmphiAMaintenance())
+	events := domainEventsFromMock(mockdata.NoonSessionEvent(now))
 
 	status := interpreter.Resolve(context.Background(), room, events)
 	if status != RoomStatusAvailable {
@@ -148,17 +104,8 @@ func TestStatusInterpreter_IgnoresMaintenanceWhenSourceFailsAndFallsBackToCalend
 		fakeUnavailabilitySource{err: errors.New("source temporarily unavailable")},
 	)
 
-	room := DirectoryRoom{
-		ResourceName:  "AMPHI-A",
-		ResourceEmail: "amphi-a@example.org",
-	}
-	events := []Event{
-		{
-			Title: "Current Event",
-			Start: now.Add(-5 * time.Minute),
-			End:   now.Add(5 * time.Minute),
-		},
-	}
+	room := domainDirectoryRoomFromMock(mockdata.DirectoryRoomAmphiA())
+	events := domainEventsFromMock(mockdata.OccupiedEvent(now))
 
 	status := interpreter.Resolve(context.Background(), room, events)
 	if status != RoomStatusOccupied {

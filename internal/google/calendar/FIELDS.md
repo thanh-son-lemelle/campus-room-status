@@ -16,10 +16,10 @@ Mapped FreeBusy fields:
 
 Mapped Events fields:
 
-- `summary` fallback `id` -> `domain.Event.Title`
+- `summary` fallback `description` fallback synthetic `Busy` -> `domain.Event.Title`
 - `start.dateTime` fallback `start.date` -> `domain.Event.Start`
 - `end.dateTime` fallback `end.date` -> `domain.Event.End`
-- `organizer.displayName` fallback `organizer.email` -> `domain.Event.Organizer`
+- `organizer.displayName` fallback `organizer.email` fallback `creator.*` fallback synthetic `Google Calendar` -> `domain.Event.Organizer`
 - cancelled events are ignored
 
 Behavior:

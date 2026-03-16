@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"campus-room-status/internal/domain"
+	mockdata "campus-room-status/internal/mockData"
 )
 
 func TestService_GetHealth_HealthyComplete(t *testing.T) {
@@ -15,16 +16,16 @@ func TestService_GetHealth_HealthyComplete(t *testing.T) {
 
 	svc := NewService(
 		fakeInventoryHealthReader{
-			state: domain.InventoryCacheHealthState{
+			state: domainInventoryHealthStateFromMock(mockdata.InventoryCacheHealthState{
 				Degraded:    false,
 				LastRefresh: adminRefresh,
-			},
+			}),
 		},
 		fakeCalendarHealthReader{
-			state: domain.RoomEventsCacheHealthState{
+			state: domainRoomEventsHealthStateFromMock(mockdata.RoomEventsCacheHealthState{
 				Degraded:                false,
 				LastSuccessfulRefreshAt: &calendarRefresh,
-			},
+			}),
 		},
 		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
@@ -57,17 +58,17 @@ func TestService_GetHealth_AdminDownButStaleAvailable(t *testing.T) {
 
 	svc := NewService(
 		fakeInventoryHealthReader{
-			state: domain.InventoryCacheHealthState{
+			state: domainInventoryHealthStateFromMock(mockdata.InventoryCacheHealthState{
 				Degraded:       true,
 				LastRefresh:    adminRefresh,
 				LastAdminError: &adminError,
-			},
+			}),
 		},
 		fakeCalendarHealthReader{
-			state: domain.RoomEventsCacheHealthState{
+			state: domainRoomEventsHealthStateFromMock(mockdata.RoomEventsCacheHealthState{
 				Degraded:                false,
 				LastSuccessfulRefreshAt: &calendarRefresh,
-			},
+			}),
 		},
 		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
@@ -97,17 +98,17 @@ func TestService_GetHealth_CalendarDownButStaleAvailable(t *testing.T) {
 
 	svc := NewService(
 		fakeInventoryHealthReader{
-			state: domain.InventoryCacheHealthState{
+			state: domainInventoryHealthStateFromMock(mockdata.InventoryCacheHealthState{
 				Degraded:    false,
 				LastRefresh: adminRefresh,
-			},
+			}),
 		},
 		fakeCalendarHealthReader{
-			state: domain.RoomEventsCacheHealthState{
+			state: domainRoomEventsHealthStateFromMock(mockdata.RoomEventsCacheHealthState{
 				Degraded:                true,
 				LastCalendarErrorAt:     &calendarError,
 				LastSuccessfulRefreshAt: &calendarRefresh,
-			},
+			}),
 		},
 		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
@@ -136,16 +137,16 @@ func TestService_GetHealth_LastSyncIsMostRecentSuccessfulRefresh(t *testing.T) {
 
 	svc := NewService(
 		fakeInventoryHealthReader{
-			state: domain.InventoryCacheHealthState{
+			state: domainInventoryHealthStateFromMock(mockdata.InventoryCacheHealthState{
 				Degraded:    false,
 				LastRefresh: adminRefresh,
-			},
+			}),
 		},
 		fakeCalendarHealthReader{
-			state: domain.RoomEventsCacheHealthState{
+			state: domainRoomEventsHealthStateFromMock(mockdata.RoomEventsCacheHealthState{
 				Degraded:                false,
 				LastSuccessfulRefreshAt: &calendarRefresh,
-			},
+			}),
 		},
 		&sequenceClock{times: []time.Time{now, now}},
 		"dev",
@@ -167,15 +168,15 @@ func TestService_GetHealth_ResponseTimeIsSet(t *testing.T) {
 
 	svc := NewService(
 		fakeInventoryHealthReader{
-			state: domain.InventoryCacheHealthState{
+			state: domainInventoryHealthStateFromMock(mockdata.InventoryCacheHealthState{
 				Degraded:    false,
 				LastRefresh: start,
-			},
+			}),
 		},
 		fakeCalendarHealthReader{
-			state: domain.RoomEventsCacheHealthState{
+			state: domainRoomEventsHealthStateFromMock(mockdata.RoomEventsCacheHealthState{
 				Degraded: false,
-			},
+			}),
 		},
 		&sequenceClock{times: []time.Time{start, end}},
 		"dev",
@@ -224,4 +225,38 @@ func (c *sequenceClock) Now() time.Time {
 	value := c.times[c.index]
 	c.index++
 	return value
+}
+
+func domainInventoryHealthStateFromMock(state mockdata.InventoryCacheHealthState) domain.InventoryCacheHealthState {
+	var lastAdminError *time.Time
+	if state.LastAdminError != nil {
+		value := *state.LastAdminError
+		lastAdminError = &value
+	}
+
+	return domain.InventoryCacheHealthState{
+		Degraded:       state.Degraded,
+		LastRefresh:    state.LastRefresh,
+		LastAdminError: lastAdminError,
+	}
+}
+
+func domainRoomEventsHealthStateFromMock(state mockdata.RoomEventsCacheHealthState) domain.RoomEventsCacheHealthState {
+	var lastCalendarErrorAt *time.Time
+	if state.LastCalendarErrorAt != nil {
+		value := *state.LastCalendarErrorAt
+		lastCalendarErrorAt = &value
+	}
+
+	var lastSuccessfulRefreshAt *time.Time
+	if state.LastSuccessfulRefreshAt != nil {
+		value := *state.LastSuccessfulRefreshAt
+		lastSuccessfulRefreshAt = &value
+	}
+
+	return domain.RoomEventsCacheHealthState{
+		Degraded:                state.Degraded,
+		LastCalendarErrorAt:     lastCalendarErrorAt,
+		LastSuccessfulRefreshAt: lastSuccessfulRefreshAt,
+	}
 }
