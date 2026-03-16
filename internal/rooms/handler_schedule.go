@@ -33,6 +33,16 @@ type scheduleHandler struct {
 	service domain.RoomService
 }
 
+// handle handles function behavior.
+//
+// Summary:
+// - Handles function behavior.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - None.
 func (h *scheduleHandler) handle(c *gin.Context) {
 	if !ensureRoomServiceConfigured(c, h.service) {
 		return
@@ -64,6 +74,20 @@ func (h *scheduleHandler) handle(c *gin.Context) {
 	})
 }
 
+// parseSchedulePeriod parses schedule period.
+//
+// Summary:
+// - Parses schedule period.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (string): Returned value.
+// - value3 (time.Time): Returned value.
+// - value4 (time.Time): Returned value.
+// - value5 (error): Returned value.
 func parseSchedulePeriod(c *gin.Context) (string, string, time.Time, time.Time, error) {
 	startRaw := c.Query("start")
 	if startRaw == "" {

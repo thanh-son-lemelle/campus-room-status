@@ -8,6 +8,19 @@ import (
 	"campus-room-status/internal/domain"
 )
 
+// GetRoomDetail gets room detail.
+//
+// Summary:
+// - Gets room detail.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - code (string): Input parameter.
+//
+// Returns:
+// - value1 (domain.Room): Returned value.
+// - value2 ([]domain.Event): Returned value.
+// - value3 (error): Returned value.
 func (s *service) GetRoomDetail(ctx context.Context, code string) (domain.Room, []domain.Event, error) {
 	if s.inventory == nil {
 		return domain.Room{}, nil, errors.New("inventory cache is required")
@@ -54,6 +67,20 @@ func (s *service) GetRoomDetail(ctx context.Context, code string) (domain.Room, 
 	return enriched, scheduleToday, nil
 }
 
+// GetRoomSchedule gets room schedule.
+//
+// Summary:
+// - Gets room schedule.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - code (string): Input parameter.
+// - start (time.Time): Input parameter.
+// - end (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Event): Returned value.
+// - value2 (error): Returned value.
 func (s *service) GetRoomSchedule(ctx context.Context, code string, start time.Time, end time.Time) ([]domain.Event, error) {
 	if s.inventory == nil {
 		return nil, errors.New("inventory cache is required")

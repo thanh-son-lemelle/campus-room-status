@@ -33,6 +33,16 @@ type handler struct {
 	clock   domain.Clock
 }
 
+// handle handles function behavior.
+//
+// Summary:
+// - Handles function behavior.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - None.
 func (h *handler) handle(c *gin.Context) {
 	if h.service == nil {
 		api.WriteError(c, api.NewHTTPError(
@@ -55,6 +65,16 @@ func (h *handler) handle(c *gin.Context) {
 	})
 }
 
+// timestampFromClock timestamps from clock.
+//
+// Summary:
+// - Timestamps from clock.
+//
+// Attributes:
+// - clock (domain.Clock): Input parameter.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
 func timestampFromClock(clock domain.Clock) time.Time {
 	if clock == nil {
 		return time.Now().UTC()
@@ -62,6 +82,16 @@ func timestampFromClock(clock domain.Clock) time.Time {
 	return clock.Now().UTC()
 }
 
+// mapDomainBuildingsToResponse maps domain buildings to response.
+//
+// Summary:
+// - Maps domain buildings to response.
+//
+// Attributes:
+// - buildings ([]domain.Building): Input parameter.
+//
+// Returns:
+// - value1 ([]api.BuildingResponse): Returned value.
 func mapDomainBuildingsToResponse(buildings []domain.Building) []api.BuildingResponse {
 	out := make([]api.BuildingResponse, len(buildings))
 	for i := range buildings {
@@ -78,6 +108,16 @@ func mapDomainBuildingsToResponse(buildings []domain.Building) []api.BuildingRes
 
 type handlerClock struct{}
 
+// Now nows function behavior.
+//
+// Summary:
+// - Nows function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
 func (handlerClock) Now() time.Time {
 	return time.Now().UTC()
 }

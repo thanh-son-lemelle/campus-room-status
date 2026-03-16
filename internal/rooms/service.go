@@ -27,6 +27,19 @@ type service struct {
 
 var _ domain.RoomService = (*service)(nil)
 
+// NewService creates a new service.
+//
+// Summary:
+// - Creates a new service.
+//
+// Attributes:
+// - inventory (inventoryReader): Input parameter.
+// - events (eventsReader): Input parameter.
+// - statusInterpreter (domain.StatusInterpreter): Input parameter.
+// - clock (domain.Clock): Input parameter.
+//
+// Returns:
+// - value1 (domain.RoomService): Returned value.
 func NewService(
 	inventory inventoryReader,
 	events eventsReader,
@@ -53,6 +66,16 @@ func NewService(
 
 type serviceClock struct{}
 
+// Now nows function behavior.
+//
+// Summary:
+// - Nows function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
 func (serviceClock) Now() time.Time {
 	return time.Now().UTC()
 }

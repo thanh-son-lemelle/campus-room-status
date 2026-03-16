@@ -5,6 +5,16 @@ import (
 	"campus-room-status/internal/domain"
 )
 
+// domainRoomToAPIRoom domains room to api room.
+//
+// Summary:
+// - Domains room to api room.
+//
+// Attributes:
+// - room (domain.Room): Input parameter.
+//
+// Returns:
+// - value1 (api.RoomResponse): Returned value.
 func domainRoomToAPIRoom(room domain.Room) api.RoomResponse {
 	return api.RoomResponse{
 		Code:          room.Code,
@@ -20,6 +30,16 @@ func domainRoomToAPIRoom(room domain.Room) api.RoomResponse {
 	}
 }
 
+// domainEventToAPIEvent domains event to api event.
+//
+// Summary:
+// - Domains event to api event.
+//
+// Attributes:
+// - event (*domain.Event): Input parameter.
+//
+// Returns:
+// - value1 (*api.EventResponse): Returned value.
 func domainEventToAPIEvent(event *domain.Event) *api.EventResponse {
 	if event == nil {
 		return nil
@@ -33,6 +53,16 @@ func domainEventToAPIEvent(event *domain.Event) *api.EventResponse {
 	}
 }
 
+// mapDomainEventsToAPIEvents maps domain events to api events.
+//
+// Summary:
+// - Maps domain events to api events.
+//
+// Attributes:
+// - events ([]domain.Event): Input parameter.
+//
+// Returns:
+// - value1 ([]api.EventResponse): Returned value.
 func mapDomainEventsToAPIEvents(events []domain.Event) []api.EventResponse {
 	if events == nil {
 		return nil

@@ -5,6 +5,16 @@ import (
 	"strings"
 )
 
+// codeFromEmail codes from email.
+//
+// Summary:
+// - Codes from email.
+//
+// Attributes:
+// - resourceEmail (string): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
 func codeFromEmail(resourceEmail string) string {
 	at := strings.Index(resourceEmail, "@")
 	if at <= 0 {
@@ -13,6 +23,16 @@ func codeFromEmail(resourceEmail string) string {
 	return strings.TrimSpace(resourceEmail[:at])
 }
 
+// firstNonEmpty firsts non empty.
+//
+// Summary:
+// - Firsts non empty.
+//
+// Attributes:
+// - values (...string): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
@@ -22,6 +42,17 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+// appendIfNotEmpty appends if not empty.
+//
+// Summary:
+// - Appends if not empty.
+//
+// Attributes:
+// - values ([]string): Input parameter.
+// - value (string): Input parameter.
+//
+// Returns:
+// - value1 ([]string): Returned value.
 func appendIfNotEmpty(values []string, value string) []string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -30,6 +61,16 @@ func appendIfNotEmpty(values []string, value string) []string {
 	return append(values, trimmed)
 }
 
+// trimNonEmpty trims non empty.
+//
+// Summary:
+// - Trims non empty.
+//
+// Attributes:
+// - values ([]string): Input parameter.
+//
+// Returns:
+// - value1 ([]string): Returned value.
 func trimNonEmpty(values []string) []string {
 	out := make([]string, 0, len(values))
 	for _, value := range values {
@@ -42,6 +83,16 @@ func trimNonEmpty(values []string) []string {
 	return out
 }
 
+// hasAnyValue has any value.
+//
+// Summary:
+// - Has any value.
+//
+// Attributes:
+// - value (any): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func hasAnyValue(value any) bool {
 	if value == nil {
 		return false
@@ -66,6 +117,17 @@ func hasAnyValue(value any) bool {
 	}
 }
 
+// slicesContainsString sliceses contains string.
+//
+// Summary:
+// - Sliceses contains string.
+//
+// Attributes:
+// - values ([]string): Input parameter.
+// - target (string): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func slicesContainsString(values []string, target string) bool {
 	for _, value := range values {
 		if value == target {
@@ -75,6 +137,16 @@ func slicesContainsString(values []string, target string) bool {
 	return false
 }
 
+// normalizeEndpoint normalizes endpoint.
+//
+// Summary:
+// - Normalizes endpoint.
+//
+// Attributes:
+// - baseURL (string): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
 func normalizeEndpoint(baseURL string) string {
 	trimmed := strings.TrimSpace(baseURL)
 	if trimmed == "" {

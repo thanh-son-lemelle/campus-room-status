@@ -14,6 +14,16 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
+// isRecoverableEventsListError is recoverable events list error.
+//
+// Summary:
+// - Is recoverable events list error.
+//
+// Attributes:
+// - err (error): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func isRecoverableEventsListError(err error) bool {
 	var apiErr *googleapi.Error
 	if !errors.As(err, &apiErr) {
@@ -23,6 +33,20 @@ func isRecoverableEventsListError(err error) bool {
 	return apiErr.Code == http.StatusForbidden || apiErr.Code == http.StatusNotFound
 }
 
+// listDetailedEvents lists detailed events.
+//
+// Summary:
+// - Lists detailed events.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - roomID (string): Input parameter.
+// - start (time.Time): Input parameter.
+// - end (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Event): Returned value.
+// - value2 (error): Returned value.
 func (c *Client) listDetailedEvents(ctx context.Context, roomID string, start, end time.Time) ([]domain.Event, error) {
 	pageToken := ""
 	visitedTokens := make(map[string]struct{})
@@ -77,6 +101,17 @@ func (c *Client) listDetailedEvents(ctx context.Context, roomID string, start, e
 	return out, nil
 }
 
+// mapCalendarEvent maps calendar event.
+//
+// Summary:
+// - Maps calendar event.
+//
+// Attributes:
+// - item (*gcalendar.Event): Input parameter.
+//
+// Returns:
+// - value1 (domain.Event): Returned value.
+// - value2 (bool): Returned value.
 func mapCalendarEvent(item *gcalendar.Event) (domain.Event, bool) {
 	if item == nil {
 		return domain.Event{}, false
@@ -118,6 +153,17 @@ func mapCalendarEvent(item *gcalendar.Event) (domain.Event, bool) {
 	}, true
 }
 
+// parseEventDateTime parses event date time.
+//
+// Summary:
+// - Parses event date time.
+//
+// Attributes:
+// - dateTime (*gcalendar.EventDateTime): Input parameter.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
+// - value2 (bool): Returned value.
 func parseEventDateTime(dateTime *gcalendar.EventDateTime) (time.Time, bool) {
 	if dateTime == nil {
 		return time.Time{}, false
@@ -142,6 +188,17 @@ func parseEventDateTime(dateTime *gcalendar.EventDateTime) (time.Time, bool) {
 	return time.Time{}, false
 }
 
+// mergeBusyAndDetailedEvents merges busy and detailed events.
+//
+// Summary:
+// - Merges busy and detailed events.
+//
+// Attributes:
+// - busy ([]busyInterval): Input parameter.
+// - detailed ([]domain.Event): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Event): Returned value.
 func mergeBusyAndDetailedEvents(busy []busyInterval, detailed []domain.Event) []domain.Event {
 	out := make([]domain.Event, 0, len(detailed)+len(busy))
 	out = append(out, detailed...)
@@ -169,6 +226,17 @@ func mergeBusyAndDetailedEvents(busy []busyInterval, detailed []domain.Event) []
 	return out
 }
 
+// busyIntervalCoveredByDetailedEvents busies interval covered by detailed events.
+//
+// Summary:
+// - Busies interval covered by detailed events.
+//
+// Attributes:
+// - interval (busyInterval): Input parameter.
+// - detailed ([]domain.Event): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func busyIntervalCoveredByDetailedEvents(interval busyInterval, detailed []domain.Event) bool {
 	for _, event := range detailed {
 		if !event.End.After(interval.Start) {

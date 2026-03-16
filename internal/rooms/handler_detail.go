@@ -29,6 +29,16 @@ type detailHandler struct {
 	service domain.RoomService
 }
 
+// handle handles function behavior.
+//
+// Summary:
+// - Handles function behavior.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - None.
 func (h *detailHandler) handle(c *gin.Context) {
 	if !ensureRoomServiceConfigured(c, h.service) {
 		return

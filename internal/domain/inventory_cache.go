@@ -45,6 +45,20 @@ type InventoryCache struct {
 	lastAdminError *time.Time
 }
 
+// NewInventoryCache creates a new inventory cache.
+//
+// Summary:
+// - Creates a new inventory cache.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - source (InventorySource): Input parameter.
+// - ttl (time.Duration): Input parameter.
+// - clock (CacheClock): Input parameter.
+//
+// Returns:
+// - value1 (*InventoryCache): Returned value.
+// - value2 (error): Returned value.
 func NewInventoryCache(ctx context.Context, source InventorySource, ttl time.Duration, clock CacheClock) (*InventoryCache, error) {
 	if source == nil {
 		return nil, errors.New("inventory source is required")
@@ -69,6 +83,17 @@ func NewInventoryCache(ctx context.Context, source InventorySource, ttl time.Dur
 	return cache, nil
 }
 
+// GetInventory gets inventory.
+//
+// Summary:
+// - Gets inventory.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (InventorySnapshot): Returned value.
+// - value2 (error): Returned value.
 func (c *InventoryCache) GetInventory(ctx context.Context) (InventorySnapshot, error) {
 	now := c.clock.Now()
 
@@ -83,6 +108,16 @@ func (c *InventoryCache) GetInventory(ctx context.Context) (InventorySnapshot, e
 	return c.refresh(ctx)
 }
 
+// Metadata metadatas function behavior.
+//
+// Summary:
+// - Metadatas function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (InventoryCacheMetadata): Returned value.
 func (c *InventoryCache) Metadata() InventoryCacheMetadata {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -93,6 +128,16 @@ func (c *InventoryCache) Metadata() InventoryCacheMetadata {
 	}
 }
 
+// HealthState healths state.
+//
+// Summary:
+// - Healths state.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (InventoryCacheHealthState): Returned value.
 func (c *InventoryCache) HealthState() InventoryCacheHealthState {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -109,6 +154,16 @@ func (c *InventoryCache) HealthState() InventoryCacheHealthState {
 	return state
 }
 
+// ForceRefresh forces refresh.
+//
+// Summary:
+// - Forces refresh.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (error): Returned value.
 func (c *InventoryCache) ForceRefresh(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -132,6 +187,16 @@ func (c *InventoryCache) ForceRefresh(ctx context.Context) error {
 	return nil
 }
 
+// warmup warmups function behavior.
+//
+// Summary:
+// - Warmups function behavior.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (error): Returned value.
 func (c *InventoryCache) warmup(ctx context.Context) error {
 	snapshot, err := c.source.LoadInventory(ctx)
 	if err != nil {
@@ -153,6 +218,17 @@ func (c *InventoryCache) warmup(ctx context.Context) error {
 	return nil
 }
 
+// refresh refreshes function behavior.
+//
+// Summary:
+// - Refreshes function behavior.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (InventorySnapshot): Returned value.
+// - value2 (error): Returned value.
 func (c *InventoryCache) refresh(ctx context.Context) (InventorySnapshot, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -184,6 +260,16 @@ func (c *InventoryCache) refresh(ctx context.Context) (InventorySnapshot, error)
 	return cloneSnapshot(c.snapshot), nil
 }
 
+// cloneSnapshot clones snapshot.
+//
+// Summary:
+// - Clones snapshot.
+//
+// Attributes:
+// - src (InventorySnapshot): Input parameter.
+//
+// Returns:
+// - value1 (InventorySnapshot): Returned value.
 func cloneSnapshot(src InventorySnapshot) InventorySnapshot {
 	var out InventorySnapshot
 
@@ -217,6 +303,16 @@ func cloneSnapshot(src InventorySnapshot) InventorySnapshot {
 
 type cacheSystemClock struct{}
 
+// Now nows function behavior.
+//
+// Summary:
+// - Nows function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
 func (cacheSystemClock) Now() time.Time {
 	return time.Now().UTC()
 }

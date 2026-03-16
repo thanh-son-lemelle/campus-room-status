@@ -11,6 +11,17 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// registerAPIRoutes registers api routes.
+//
+// Summary:
+// - Registers api routes.
+//
+// Attributes:
+// - r (*gin.Engine): Input parameter.
+// - deps (routerDependencies): Input parameter.
+//
+// Returns:
+// - None.
 func registerAPIRoutes(r *gin.Engine, deps routerDependencies) {
 	apiGroup := r.Group("/api/v1")
 	apiGroup.GET("/docs/openapi.json", docs.NewOpenAPIHandler())

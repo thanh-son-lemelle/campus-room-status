@@ -13,6 +13,21 @@ type busyInterval struct {
 	End   time.Time
 }
 
+// listBusyIntervals retrieves and normalizes busy intervals for a room calendar.
+//
+// Summary:
+// - Queries Google Calendar FreeBusy data for the provided room and time window.
+// - Filters malformed intervals, normalizes times to UTC, and sorts output chronologically.
+//
+// Attributes:
+// - ctx: Request-scoped context for cancellation and deadlines.
+// - roomID: Google Calendar identifier for the room calendar.
+// - start: Inclusive start of the query window.
+// - end: Exclusive end of the query window.
+//
+// Returns:
+// - []busyInterval: Sorted list of valid busy intervals; empty when none are found.
+// - error: Google API query error.
 func (c *Client) listBusyIntervals(ctx context.Context, roomID string, start, end time.Time) ([]busyInterval, error) {
 	request := &gcalendar.FreeBusyRequest{
 		TimeMin: start.Format(time.RFC3339),

@@ -7,6 +7,16 @@ import (
 	"campus-room-status/internal/domain"
 )
 
+// roomEventLookupKey rooms event lookup key.
+//
+// Summary:
+// - Rooms event lookup key.
+//
+// Attributes:
+// - room (domain.Room): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
 func roomEventLookupKey(room domain.Room) string {
 	if room.ResourceEmail != "" {
 		return room.ResourceEmail
@@ -17,6 +27,16 @@ func roomEventLookupKey(room domain.Room) string {
 	return room.Name
 }
 
+// directoryRoomFromDomainRoom directories room from domain room.
+//
+// Summary:
+// - Directories room from domain room.
+//
+// Attributes:
+// - room (domain.Room): Input parameter.
+//
+// Returns:
+// - value1 (domain.DirectoryRoom): Returned value.
 func directoryRoomFromDomainRoom(room domain.Room) domain.DirectoryRoom {
 	return domain.DirectoryRoom{
 		ResourceName:  room.Code,
@@ -26,6 +46,18 @@ func directoryRoomFromDomainRoom(room domain.Room) domain.DirectoryRoom {
 	}
 }
 
+// currentAndNextEvent currents and next event.
+//
+// Summary:
+// - Currents and next event.
+//
+// Attributes:
+// - events ([]domain.Event): Input parameter.
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 (*domain.Event): Returned value.
+// - value2 (*domain.Event): Returned value.
 func currentAndNextEvent(events []domain.Event, now time.Time) (*domain.Event, *domain.Event) {
 	var current *domain.Event
 	var next *domain.Event
@@ -50,6 +82,16 @@ func currentAndNextEvent(events []domain.Event, now time.Time) (*domain.Event, *
 	return current, next
 }
 
+// cloneDomainRoom clones domain room.
+//
+// Summary:
+// - Clones domain room.
+//
+// Attributes:
+// - room (domain.Room): Input parameter.
+//
+// Returns:
+// - value1 (domain.Room): Returned value.
 func cloneDomainRoom(room domain.Room) domain.Room {
 	cloned := room
 	if room.CurrentEvent != nil {
@@ -63,6 +105,16 @@ func cloneDomainRoom(room domain.Room) domain.Room {
 	return cloned
 }
 
+// sortEventsByStart sorts events by start.
+//
+// Summary:
+// - Sorts events by start.
+//
+// Attributes:
+// - events ([]domain.Event): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Event): Returned value.
 func sortEventsByStart(events []domain.Event) []domain.Event {
 	cloned := cloneEvents(events)
 	sort.SliceStable(cloned, func(i, j int) bool {
@@ -71,6 +123,16 @@ func sortEventsByStart(events []domain.Event) []domain.Event {
 	return cloned
 }
 
+// cloneEvents clones events.
+//
+// Summary:
+// - Clones events.
+//
+// Attributes:
+// - events ([]domain.Event): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Event): Returned value.
 func cloneEvents(events []domain.Event) []domain.Event {
 	if events == nil {
 		return nil
@@ -81,6 +143,18 @@ func cloneEvents(events []domain.Event) []domain.Event {
 	return cloned
 }
 
+// findRoomByCode finds room by code.
+//
+// Summary:
+// - Finds room by code.
+//
+// Attributes:
+// - rooms ([]domain.Room): Input parameter.
+// - code (string): Input parameter.
+//
+// Returns:
+// - value1 (*domain.Room): Returned value.
+// - value2 (error): Returned value.
 func findRoomByCode(rooms []domain.Room, code string) (*domain.Room, error) {
 	for i := range rooms {
 		if rooms[i].Code == code {
@@ -92,6 +166,18 @@ func findRoomByCode(rooms []domain.Room, code string) (*domain.Room, error) {
 	return nil, &domain.RoomNotFoundError{RoomCode: code}
 }
 
+// filterEventsInPeriod filters events in period.
+//
+// Summary:
+// - Filters events in period.
+//
+// Attributes:
+// - events ([]domain.Event): Input parameter.
+// - start (time.Time): Input parameter.
+// - end (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Event): Returned value.
 func filterEventsInPeriod(events []domain.Event, start time.Time, end time.Time) []domain.Event {
 	filtered := make([]domain.Event, 0, len(events))
 	for _, event := range events {

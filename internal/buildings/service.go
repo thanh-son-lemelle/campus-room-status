@@ -17,10 +17,31 @@ type service struct {
 
 var _ domain.BuildingService = (*service)(nil)
 
+// NewService creates a new service.
+//
+// Summary:
+// - Creates a new service.
+//
+// Attributes:
+// - inventory (inventoryReader): Input parameter.
+//
+// Returns:
+// - value1 (domain.BuildingService): Returned value.
 func NewService(inventory inventoryReader) domain.BuildingService {
 	return &service{inventory: inventory}
 }
 
+// ListBuildings lists buildings.
+//
+// Summary:
+// - Lists buildings.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Building): Returned value.
+// - value2 (error): Returned value.
 func (s *service) ListBuildings(ctx context.Context) ([]domain.Building, error) {
 	if s.inventory == nil {
 		return nil, errors.New("inventory cache is required")
@@ -34,6 +55,16 @@ func (s *service) ListBuildings(ctx context.Context) ([]domain.Building, error) 
 	return cloneBuildings(snapshot.Buildings), nil
 }
 
+// cloneBuildings clones buildings.
+//
+// Summary:
+// - Clones buildings.
+//
+// Attributes:
+// - buildings ([]domain.Building): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Building): Returned value.
 func cloneBuildings(buildings []domain.Building) []domain.Building {
 	if buildings == nil {
 		return nil

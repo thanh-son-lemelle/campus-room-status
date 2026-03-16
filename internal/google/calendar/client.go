@@ -34,6 +34,19 @@ type Client struct {
 
 var _ domain.CalendarClient = (*Client)(nil)
 
+// NewClient creates a new client.
+//
+// Summary:
+// - Creates a new client.
+//
+// Attributes:
+// - httpClient (*http.Client): Input parameter.
+// - tokenProvider (TokenProvider): Input parameter.
+// - cfg (ClientConfig): Input parameter.
+//
+// Returns:
+// - value1 (*Client): Returned value.
+// - value2 (error): Returned value.
 func NewClient(httpClient *http.Client, tokenProvider TokenProvider, cfg ClientConfig) (*Client, error) {
 	if tokenProvider == nil {
 		return nil, errors.New("token provider is required")
@@ -70,6 +83,20 @@ func NewClient(httpClient *http.Client, tokenProvider TokenProvider, cfg ClientC
 	}, nil
 }
 
+// ListRoomEvents lists room events.
+//
+// Summary:
+// - Lists room events.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - resourceEmail (string): Input parameter.
+// - start (time.Time): Input parameter.
+// - end (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Event): Returned value.
+// - value2 (error): Returned value.
 func (c *Client) ListRoomEvents(ctx context.Context, resourceEmail string, start, end time.Time) ([]domain.Event, error) {
 	roomID := normalizeRoomID(resourceEmail)
 	if roomID == "" {

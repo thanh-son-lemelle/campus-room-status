@@ -19,6 +19,16 @@ type FileRefreshTokenStore struct {
 	path string
 }
 
+// NewFileRefreshTokenStore creates a new file refresh token store.
+//
+// Summary:
+// - Creates a new file refresh token store.
+//
+// Attributes:
+// - path (string): Input parameter.
+//
+// Returns:
+// - value1 (*FileRefreshTokenStore): Returned value.
 func NewFileRefreshTokenStore(path string) *FileRefreshTokenStore {
 	// TODO(prod): avoid local plaintext file; use a managed secret backend.
 	return &FileRefreshTokenStore{path: strings.TrimSpace(path)}
@@ -29,6 +39,17 @@ type tokenFilePayload struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// Save saves function behavior.
+//
+// Summary:
+// - Saves function behavior.
+//
+// Attributes:
+// - arg1 (context.Context): Input parameter.
+// - token (string): Input parameter.
+//
+// Returns:
+// - value1 (error): Returned value.
 func (s *FileRefreshTokenStore) Save(_ context.Context, token string) error {
 	if s == nil || strings.TrimSpace(s.path) == "" {
 		return errors.New("refresh token file path is required")
@@ -62,6 +83,17 @@ func (s *FileRefreshTokenStore) Save(_ context.Context, token string) error {
 	return os.Rename(tmpPath, s.path)
 }
 
+// Load loads data.
+//
+// Summary:
+// - Loads data.
+//
+// Attributes:
+// - arg1 (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
+// - value2 (error): Returned value.
 func (s *FileRefreshTokenStore) Load(_ context.Context) (string, error) {
 	if s == nil || strings.TrimSpace(s.path) == "" {
 		return "", errors.New("refresh token file path is required")

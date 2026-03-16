@@ -43,6 +43,19 @@ type InventorySource struct {
 
 var _ domain.InventorySource = (*InventorySource)(nil)
 
+// NewInventorySource creates a new inventory source.
+//
+// Summary:
+// - Creates a new inventory source.
+//
+// Attributes:
+// - client (*http.Client): Input parameter.
+// - tokenProvider (TokenProvider): Input parameter.
+// - cfg (InventorySourceConfig): Input parameter.
+//
+// Returns:
+// - value1 (*InventorySource): Returned value.
+// - value2 (error): Returned value.
 func NewInventorySource(client *http.Client, tokenProvider TokenProvider, cfg InventorySourceConfig) (*InventorySource, error) {
 	if tokenProvider == nil {
 		return nil, errors.New("token provider is required")
@@ -86,6 +99,17 @@ func NewInventorySource(client *http.Client, tokenProvider TokenProvider, cfg In
 	}, nil
 }
 
+// LoadInventory loads inventory.
+//
+// Summary:
+// - Loads inventory.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (domain.InventorySnapshot): Returned value.
+// - value2 (error): Returned value.
 func (s *InventorySource) LoadInventory(ctx context.Context) (domain.InventorySnapshot, error) {
 	buildings, err := s.listBuildings(ctx)
 	if err != nil {
@@ -107,6 +131,16 @@ func (s *InventorySource) LoadInventory(ctx context.Context) (domain.InventorySn
 	}, nil
 }
 
+// ObservedResourceFields observeds resource fields.
+//
+// Summary:
+// - Observeds resource fields.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 ([]string): Returned value.
 func (s *InventorySource) ObservedResourceFields() []string {
 	s.observedFieldsMu.RLock()
 	defer s.observedFieldsMu.RUnlock()

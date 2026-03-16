@@ -41,6 +41,16 @@ type listHandler struct {
 	clock   domain.Clock
 }
 
+// handle handles function behavior.
+//
+// Summary:
+// - Handles function behavior.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - None.
 func (h *listHandler) handle(c *gin.Context) {
 	if !ensureRoomServiceConfigured(c, h.service) {
 		return
@@ -74,6 +84,18 @@ func (h *listHandler) handle(c *gin.Context) {
 	})
 }
 
+// parseListFilters parses list filters.
+//
+// Summary:
+// - Parses list filters.
+//
+// Attributes:
+// - c (*gin.Context): Input parameter.
+//
+// Returns:
+// - value1 (domain.RoomFilters): Returned value.
+// - value2 (map[string]any): Returned value.
+// - value3 (error): Returned value.
 func parseListFilters(c *gin.Context) (domain.RoomFilters, map[string]any, error) {
 	responseFilters := make(map[string]any)
 	queryFilters := domain.RoomFilters{}

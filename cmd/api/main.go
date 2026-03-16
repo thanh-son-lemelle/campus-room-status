@@ -12,6 +12,8 @@ import (
 // @BasePath /
 // @schemes http https
 func main() {
+	loadDotEnvIfPresent()
+
 	r := app.NewRouter()
 	maybeAutoLaunchOAuthConsent()
 

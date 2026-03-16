@@ -14,6 +14,16 @@ const (
 
 type systemClock struct{}
 
+// Now nows function behavior.
+//
+// Summary:
+// - Nows function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
 func (systemClock) Now() time.Time {
 	return time.Now()
 }
@@ -24,6 +34,17 @@ type roomStatusInterpreter struct {
 	upcomingWindowSize time.Duration
 }
 
+// NewStatusInterpreter creates a new status interpreter.
+//
+// Summary:
+// - Creates a new status interpreter.
+//
+// Attributes:
+// - clock (Clock): Input parameter.
+// - unavailability (UnavailabilitySource): Input parameter.
+//
+// Returns:
+// - value1 (StatusInterpreter): Returned value.
 func NewStatusInterpreter(clock Clock, unavailability UnavailabilitySource) StatusInterpreter {
 	if clock == nil {
 		clock = systemClock{}
@@ -60,6 +81,18 @@ func (i *roomStatusInterpreter) Resolve(ctx context.Context, room DirectoryRoom,
 	return RoomStatusAvailable
 }
 
+// isUnavailable is unavailable.
+//
+// Summary:
+// - Is unavailable.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - room (DirectoryRoom): Input parameter.
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func (i *roomStatusInterpreter) isUnavailable(ctx context.Context, room DirectoryRoom, now time.Time) bool {
 	if i.unavailability == nil {
 		return false
@@ -78,6 +111,17 @@ func (i *roomStatusInterpreter) isUnavailable(ctx context.Context, room Director
 	return unavailable
 }
 
+// hasRunningEvent has running event.
+//
+// Summary:
+// - Has running event.
+//
+// Attributes:
+// - events ([]Event): Input parameter.
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func hasRunningEvent(events []Event, now time.Time) bool {
 	for _, event := range events {
 		if !now.Before(event.Start) && now.Before(event.End) {
@@ -87,6 +131,18 @@ func hasRunningEvent(events []Event, now time.Time) bool {
 	return false
 }
 
+// hasImminentEvent has imminent event.
+//
+// Summary:
+// - Has imminent event.
+//
+// Attributes:
+// - events ([]Event): Input parameter.
+// - now (time.Time): Input parameter.
+// - window (time.Duration): Input parameter.
+//
+// Returns:
+// - value1 (bool): Returned value.
 func hasImminentEvent(events []Event, now time.Time, window time.Duration) bool {
 	for _, event := range events {
 		if !event.Start.After(now) {

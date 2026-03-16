@@ -10,10 +10,30 @@ import (
 	goauth "campus-room-status/internal/google/oauth"
 )
 
+// newRuntimeInventorySource creates a new runtime inventory source.
+//
+// Summary:
+// - Creates a new runtime inventory source.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (domain.InventorySource): Returned value.
 func newRuntimeInventorySource() domain.InventorySource {
 	return newRuntimeInventorySourceWithConfig(loadRuntimeConfigFromEnv())
 }
 
+// newRuntimeInventorySourceWithConfig creates a new runtime inventory source with config.
+//
+// Summary:
+// - Creates a new runtime inventory source with config.
+//
+// Attributes:
+// - cfg (runtimeConfig): Input parameter.
+//
+// Returns:
+// - value1 (domain.InventorySource): Returned value.
 func newRuntimeInventorySourceWithConfig(cfg runtimeConfig) domain.InventorySource {
 	if cfg.dataSource != runtimeDataSourceGoogle {
 		return staticInventorySource{}
@@ -47,10 +67,30 @@ func newRuntimeInventorySourceWithConfig(cfg runtimeConfig) domain.InventorySour
 	}
 }
 
+// newRuntimeCalendarClient creates a new runtime calendar client.
+//
+// Summary:
+// - Creates a new runtime calendar client.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (domain.CalendarClient): Returned value.
 func newRuntimeCalendarClient() domain.CalendarClient {
 	return newRuntimeCalendarClientWithConfig(loadRuntimeConfigFromEnv())
 }
 
+// newRuntimeCalendarClientWithConfig creates a new runtime calendar client with config.
+//
+// Summary:
+// - Creates a new runtime calendar client with config.
+//
+// Attributes:
+// - cfg (runtimeConfig): Input parameter.
+//
+// Returns:
+// - value1 (domain.CalendarClient): Returned value.
 func newRuntimeCalendarClientWithConfig(cfg runtimeConfig) domain.CalendarClient {
 	if cfg.dataSource != runtimeDataSourceGoogle {
 		return staticCalendarClient{}
@@ -81,10 +121,32 @@ func newRuntimeCalendarClientWithConfig(cfg runtimeConfig) domain.CalendarClient
 	return client
 }
 
+// newRuntimeAdminTokenProvider creates a new runtime admin token provider.
+//
+// Summary:
+// - Creates a new runtime admin token provider.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (adminsdk.TokenProvider): Returned value.
+// - value2 (bool): Returned value.
 func newRuntimeAdminTokenProvider() (adminsdk.TokenProvider, bool) {
 	return newRuntimeAdminTokenProviderWithConfig(loadRuntimeConfigFromEnv())
 }
 
+// newRuntimeAdminTokenProviderWithConfig creates a new runtime admin token provider with config.
+//
+// Summary:
+// - Creates a new runtime admin token provider with config.
+//
+// Attributes:
+// - cfg (runtimeConfig): Input parameter.
+//
+// Returns:
+// - value1 (adminsdk.TokenProvider): Returned value.
+// - value2 (bool): Returned value.
 func newRuntimeAdminTokenProviderWithConfig(cfg runtimeConfig) (adminsdk.TokenProvider, bool) {
 	if provider, ok := newRuntimeOAuthTokenProvider(); ok {
 		return provider, true
@@ -109,6 +171,17 @@ func newRuntimeAdminTokenProviderWithConfig(cfg runtimeConfig) (adminsdk.TokenPr
 	return nil, false
 }
 
+// newRuntimeOAuthTokenProvider creates a new runtime o auth token provider.
+//
+// Summary:
+// - Creates a new runtime o auth token provider.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (adminsdk.TokenProvider): Returned value.
+// - value2 (bool): Returned value.
 func newRuntimeOAuthTokenProvider() (adminsdk.TokenProvider, bool) {
 	cfg, err := goauth.LoadConfigFromEnv()
 	if err != nil {
@@ -126,6 +199,16 @@ func newRuntimeOAuthTokenProvider() (adminsdk.TokenProvider, bool) {
 	return provider, true
 }
 
+// newRuntimeOAuthFlow creates a new runtime o auth flow.
+//
+// Summary:
+// - Creates a new runtime o auth flow.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (*goauth.AuthorizationFlow): Returned value.
 func newRuntimeOAuthFlow() *goauth.AuthorizationFlow {
 	cfg, err := goauth.LoadConfigFromEnv()
 	if err != nil {

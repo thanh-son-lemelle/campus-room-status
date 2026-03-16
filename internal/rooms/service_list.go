@@ -9,6 +9,18 @@ import (
 	"campus-room-status/internal/domain"
 )
 
+// ListRooms lists rooms.
+//
+// Summary:
+// - Lists rooms.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - filters (domain.RoomFilters): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Room): Returned value.
+// - value2 (error): Returned value.
 func (s *service) ListRooms(ctx context.Context, filters domain.RoomFilters) ([]domain.Room, error) {
 	if s.inventory == nil {
 		return nil, errors.New("inventory cache is required")
@@ -40,6 +52,21 @@ func (s *service) ListRooms(ctx context.Context, filters domain.RoomFilters) ([]
 	return domain.FilterAndSortRooms(enrichedRooms, filters)
 }
 
+// enrichRoomsWithCalendar enriches rooms with calendar.
+//
+// Summary:
+// - Enriches rooms with calendar.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+// - rooms ([]domain.Room): Input parameter.
+// - start (time.Time): Input parameter.
+// - end (time.Time): Input parameter.
+// - now (time.Time): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Room): Returned value.
+// - value2 (error): Returned value.
 func (s *service) enrichRoomsWithCalendar(
 	ctx context.Context,
 	rooms []domain.Room,
@@ -120,6 +147,19 @@ func (s *service) enrichRoomsWithCalendar(
 	return enriched, nil
 }
 
+// listRoomsEventsWindow lists rooms events window.
+//
+// Summary:
+// - Lists rooms events window.
+//
+// Attributes:
+// - now (time.Time): Input parameter.
+// - window (time.Duration): Input parameter.
+// - bucket (time.Duration): Input parameter.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
+// - value2 (time.Time): Returned value.
 func listRoomsEventsWindow(now time.Time, window, bucket time.Duration) (time.Time, time.Time) {
 	base := now.UTC()
 	if bucket > 0 {

@@ -7,6 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// newRouterEngine creates a new router engine.
+//
+// Summary:
+// - Creates a new router engine.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (*gin.Engine): Returned value.
 func newRouterEngine() *gin.Engine {
 	r := gin.New()
 	r.Use(

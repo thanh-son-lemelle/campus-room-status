@@ -25,6 +25,19 @@ type service struct {
 
 var _ domain.HealthService = (*service)(nil)
 
+// NewService creates a new service.
+//
+// Summary:
+// - Creates a new service.
+//
+// Attributes:
+// - inventory (inventoryHealthReader): Input parameter.
+// - calendar (calendarHealthReader): Input parameter.
+// - clock (domain.Clock): Input parameter.
+// - version (string): Input parameter.
+//
+// Returns:
+// - value1 (domain.HealthService): Returned value.
 func NewService(
 	inventory inventoryHealthReader,
 	calendar calendarHealthReader,
@@ -48,6 +61,17 @@ func NewService(
 	}
 }
 
+// GetHealth gets health.
+//
+// Summary:
+// - Gets health.
+//
+// Attributes:
+// - arg1 (context.Context): Input parameter.
+//
+// Returns:
+// - value1 (domain.HealthStatus): Returned value.
+// - value2 (error): Returned value.
 func (s *service) GetHealth(context.Context) (domain.HealthStatus, error) {
 	start := s.clock.Now().UTC()
 
@@ -88,6 +112,17 @@ func (s *service) GetHealth(context.Context) (domain.HealthStatus, error) {
 	}, nil
 }
 
+// mostRecentSync mosts recent sync.
+//
+// Summary:
+// - Mosts recent sync.
+//
+// Attributes:
+// - inventoryRefresh (time.Time): Input parameter.
+// - calendarRefresh (*time.Time): Input parameter.
+//
+// Returns:
+// - value1 (*time.Time): Returned value.
 func mostRecentSync(inventoryRefresh time.Time, calendarRefresh *time.Time) *time.Time {
 	if inventoryRefresh.IsZero() && calendarRefresh == nil {
 		return nil
@@ -109,6 +144,16 @@ func mostRecentSync(inventoryRefresh time.Time, calendarRefresh *time.Time) *tim
 
 type serviceClock struct{}
 
+// Now nows function behavior.
+//
+// Summary:
+// - Nows function behavior.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (time.Time): Returned value.
 func (serviceClock) Now() time.Time {
 	return time.Now().UTC()
 }

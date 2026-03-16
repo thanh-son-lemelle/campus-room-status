@@ -11,6 +11,17 @@ import (
 	admin "google.golang.org/api/admin/directory/v1"
 )
 
+// listCalendarResources lists calendar resources.
+//
+// Summary:
+// - Lists calendar resources.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Room): Returned value.
+// - value2 (error): Returned value.
 func (s *InventorySource) listCalendarResources(ctx context.Context) ([]domain.Room, error) {
 	pageToken := ""
 	visitedTokens := make(map[string]struct{})
@@ -60,6 +71,16 @@ func (s *InventorySource) listCalendarResources(ctx context.Context) ([]domain.R
 	return rooms, nil
 }
 
+// recordObservedFields records observed fields.
+//
+// Summary:
+// - Records observed fields.
+//
+// Attributes:
+// - fields ([]string): Input parameter.
+//
+// Returns:
+// - None.
 func (s *InventorySource) recordObservedFields(fields []string) {
 	s.observedFieldsMu.Lock()
 	defer s.observedFieldsMu.Unlock()
@@ -69,6 +90,18 @@ func (s *InventorySource) recordObservedFields(fields []string) {
 	}
 }
 
+// mapCalendarResource maps calendar resource.
+//
+// Summary:
+// - Maps calendar resource.
+//
+// Attributes:
+// - resource (*admin.CalendarResource): Input parameter.
+//
+// Returns:
+// - value1 (domain.Room): Returned value.
+// - value2 ([]string): Returned value.
+// - value3 (bool): Returned value.
 func mapCalendarResource(resource *admin.CalendarResource) (domain.Room, []string, bool) {
 	if resource == nil {
 		return domain.Room{}, nil, false
@@ -102,6 +135,16 @@ func mapCalendarResource(resource *admin.CalendarResource) (domain.Room, []strin
 	}, observedFieldsFromResource(resource), true
 }
 
+// observedFieldsFromResource observeds fields from resource.
+//
+// Summary:
+// - Observeds fields from resource.
+//
+// Attributes:
+// - resource (*admin.CalendarResource): Input parameter.
+//
+// Returns:
+// - value1 ([]string): Returned value.
 func observedFieldsFromResource(resource *admin.CalendarResource) []string {
 	fields := make([]string, 0, 16)
 

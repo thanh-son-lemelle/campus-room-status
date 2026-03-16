@@ -11,6 +11,17 @@ import (
 	admin "google.golang.org/api/admin/directory/v1"
 )
 
+// listBuildings lists buildings.
+//
+// Summary:
+// - Lists buildings.
+//
+// Attributes:
+// - ctx (context.Context): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Building): Returned value.
+// - value2 (error): Returned value.
 func (s *InventorySource) listBuildings(ctx context.Context) ([]domain.Building, error) {
 	pageToken := ""
 	visitedTokens := make(map[string]struct{})
@@ -59,6 +70,17 @@ func (s *InventorySource) listBuildings(ctx context.Context) ([]domain.Building,
 	return buildings, nil
 }
 
+// mapBuilding maps building.
+//
+// Summary:
+// - Maps building.
+//
+// Attributes:
+// - building (*admin.Building): Input parameter.
+//
+// Returns:
+// - value1 (domain.Building): Returned value.
+// - value2 (bool): Returned value.
 func mapBuilding(building *admin.Building) (domain.Building, bool) {
 	if building == nil {
 		return domain.Building{}, false
@@ -81,6 +103,16 @@ func mapBuilding(building *admin.Building) (domain.Building, bool) {
 	}, true
 }
 
+// mapBuildingAddress maps building address.
+//
+// Summary:
+// - Maps building address.
+//
+// Attributes:
+// - address (*admin.BuildingAddress): Input parameter.
+//
+// Returns:
+// - value1 (string): Returned value.
 func mapBuildingAddress(address *admin.BuildingAddress) string {
 	if address == nil {
 		return ""
@@ -96,6 +128,16 @@ func mapBuildingAddress(address *admin.BuildingAddress) string {
 	return strings.Join(parts, ", ")
 }
 
+// deriveBuildingsFromRooms derives buildings from rooms.
+//
+// Summary:
+// - Derives buildings from rooms.
+//
+// Attributes:
+// - rooms ([]domain.Room): Input parameter.
+//
+// Returns:
+// - value1 ([]domain.Building): Returned value.
 func deriveBuildingsFromRooms(rooms []domain.Room) []domain.Building {
 	byID := make(map[string]*domain.Building)
 
@@ -146,6 +188,16 @@ func deriveBuildingsFromRooms(rooms []domain.Room) []domain.Building {
 	return buildings
 }
 
+// normalizeFloorNames normalizes floor names.
+//
+// Summary:
+// - Normalizes floor names.
+//
+// Attributes:
+// - floorNames ([]string): Input parameter.
+//
+// Returns:
+// - value1 ([]string): Returned value.
 func normalizeFloorNames(floorNames []string) []string {
 	if len(floorNames) == 0 {
 		return nil

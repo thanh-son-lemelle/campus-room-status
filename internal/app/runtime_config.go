@@ -40,6 +40,16 @@ type runtimeConfig struct {
 	googleCalendarPageSize int
 }
 
+// loadRuntimeConfigFromEnv loads runtime config from env.
+//
+// Summary:
+// - Loads runtime config from env.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (runtimeConfig): Returned value.
 func loadRuntimeConfigFromEnv() runtimeConfig {
 	version := strings.TrimSpace(os.Getenv("APP_VERSION"))
 	if version == "" {
@@ -63,6 +73,17 @@ func loadRuntimeConfigFromEnv() runtimeConfig {
 	}
 }
 
+// readServiceAccountCredentials reads service account credentials.
+//
+// Summary:
+// - Reads service account credentials.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 ([]byte): Returned value.
+// - value2 (bool): Returned value.
 func readServiceAccountCredentials() ([]byte, bool) {
 	rawJSON := strings.TrimSpace(os.Getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
 	if rawJSON != "" {
@@ -90,6 +111,16 @@ func readServiceAccountCredentials() ([]byte, bool) {
 	return credentialsJSON, true
 }
 
+// runtimeDataSourceFromEnv handles runtime data source from env.
+//
+// Summary:
+// - Handles runtime data source from env.
+//
+// Attributes:
+// - None.
+//
+// Returns:
+// - value1 (runtimeDataSource): Returned value.
 func runtimeDataSourceFromEnv() runtimeDataSource {
 	raw := strings.ToLower(strings.TrimSpace(os.Getenv("DATA_SOURCE")))
 	if raw == string(runtimeDataSourceGoogle) {
@@ -99,6 +130,16 @@ func runtimeDataSourceFromEnv() runtimeDataSource {
 	return runtimeDataSourceStatic
 }
 
+// envInt envs int.
+//
+// Summary:
+// - Envs int.
+//
+// Attributes:
+// - name (string): Input parameter.
+//
+// Returns:
+// - value1 (int): Returned value.
 func envInt(name string) int {
 	raw := strings.TrimSpace(os.Getenv(name))
 	if raw == "" {
@@ -113,6 +154,16 @@ func envInt(name string) int {
 	return value
 }
 
+// envDuration envs duration.
+//
+// Summary:
+// - Envs duration.
+//
+// Attributes:
+// - name (string): Input parameter.
+//
+// Returns:
+// - value1 (time.Duration): Returned value.
 func envDuration(name string) time.Duration {
 	raw := strings.TrimSpace(os.Getenv(name))
 	if raw == "" {
@@ -127,6 +178,17 @@ func envDuration(name string) time.Duration {
 	return value
 }
 
+// envDurationOrDefault envs duration or default.
+//
+// Summary:
+// - Envs duration or default.
+//
+// Attributes:
+// - name (string): Input parameter.
+// - defaultValue (time.Duration): Input parameter.
+//
+// Returns:
+// - value1 (time.Duration): Returned value.
 func envDurationOrDefault(name string, defaultValue time.Duration) time.Duration {
 	value := envDuration(name)
 	if value <= 0 {
