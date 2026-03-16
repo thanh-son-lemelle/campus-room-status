@@ -13,7 +13,7 @@ func TestDomainContract_Models(t *testing.T) {
 		"ID":      "string",
 		"Name":    "string",
 		"Address": "string",
-		"Floors":  "[]int",
+		"Floors":  "[]string",
 	})
 
 	requireStructFields(t, pkg, "Event", map[string]string{
@@ -77,6 +77,12 @@ func TestDomainContract_Models(t *testing.T) {
 		"LastSync":                   "*time.Time",
 		"ResponseTimeMS":             "int64",
 	})
+
+	requireStructFields(t, pkg, "APIError", map[string]string{
+		"Code":      "string",
+		"Message":   "string",
+		"Timestamp": "time.Time",
+	})
 }
 
 func TestDomainContract_Interfaces(t *testing.T) {
@@ -93,9 +99,57 @@ func TestDomainContract_Interfaces(t *testing.T) {
 	requireInterfaceMethodContains(
 		t,
 		pkg,
+		"RoomService",
+		"GetRoomDetail",
+		[]string{"context.Context", "string", "Room", "[]Event", "error"},
+	)
+
+	requireInterfaceMethodContains(
+		t,
+		pkg,
+		"RoomService",
+		"GetRoomSchedule",
+		[]string{"context.Context", "string", "time.Time", "[]Event", "error"},
+	)
+
+	requireInterfaceMethodContains(
+		t,
+		pkg,
 		"HealthService",
 		"GetHealth",
 		[]string{"context.Context", "HealthStatus", "error"},
+	)
+
+	requireInterfaceMethodContains(
+		t,
+		pkg,
+		"AdminDirectoryClient",
+		"ListRooms",
+		[]string{"context.Context", "[]DirectoryRoom", "error"},
+	)
+
+	requireInterfaceMethodContains(
+		t,
+		pkg,
+		"CalendarClient",
+		"ListRoomEvents",
+		[]string{"context.Context", "string", "time.Time", "[]Event", "error"},
+	)
+
+	requireInterfaceMethodContains(
+		t,
+		pkg,
+		"StatusInterpreter",
+		"Resolve",
+		[]string{"context.Context", "DirectoryRoom", "[]Event", "string"},
+	)
+
+	requireInterfaceMethodContains(
+		t,
+		pkg,
+		"Clock",
+		"Now",
+		[]string{"time.Time"},
 	)
 }
 

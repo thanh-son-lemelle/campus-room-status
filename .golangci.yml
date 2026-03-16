@@ -1,0 +1,36 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - gosec
+    - errorlint
+    - bodyclose
+    - contextcheck
+    - durationcheck
+    - nolintlint
+  exclusions:
+    presets:
+      - comments
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - contextcheck
+          - errorlint
+      - path: cmd/api/oauth_autolaunch\.go
+        text: "G204:"
+        linters:
+          - gosec
+      - path: internal/app/router\.go
+        text: "G304:"
+        linters:
+          - gosec
+      - path: internal/app/router\.go
+        text: "G703:"
+        linters:
+          - gosec
+      - path: internal/google/oauth/store\.go
+        text: "G117:"
+        linters:
+          - gosec

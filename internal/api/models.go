@@ -3,10 +3,10 @@ package api
 import "time"
 
 type BuildingResponse struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Address string `json:"address"`
-	Floors  []int  `json:"floors"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	Address string   `json:"address"`
+	Floors  []string `json:"floors"`
 }
 
 type BuildingsResponse struct {
@@ -22,19 +22,21 @@ type EventResponse struct {
 }
 
 type RoomResponse struct {
-	Code         string         `json:"code"`
-	Name         string         `json:"name"`
-	Building     string         `json:"building"`
-	Floor        int            `json:"floor"`
-	Capacity     int            `json:"capacity"`
-	Type         string         `json:"type"`
-	Status       string         `json:"status"`
-	CurrentEvent *EventResponse `json:"current_event"`
-	NextEvent    *EventResponse `json:"next_event"`
+	Code          string         `json:"code"`
+	ResourceEmail string         `json:"resource_email,omitempty"`
+	Name          string         `json:"name"`
+	Building      string         `json:"building"`
+	Floor         int            `json:"floor"`
+	Capacity      int            `json:"capacity"`
+	Type          string         `json:"type"`
+	Status        string         `json:"status"`
+	CurrentEvent  *EventResponse `json:"current_event"`
+	NextEvent     *EventResponse `json:"next_event"`
 }
 
 type RoomDetailResponse struct {
 	Code          string          `json:"code"`
+	ResourceEmail string          `json:"resource_email,omitempty"`
 	Name          string          `json:"name"`
 	Building      string          `json:"building"`
 	Floor         int             `json:"floor"`
@@ -58,10 +60,10 @@ type RoomScheduleResponse struct {
 }
 
 type RoomsListResponse struct {
-	Timestamp time.Time      `json:"timestamp"`
-	Filters   map[string]any `json:"filters"`
-	Count     int            `json:"count"`
-	Rooms     []RoomResponse `json:"rooms"`
+	Timestamp time.Time              `json:"timestamp"`
+	Filters   map[string]interface{} `json:"filters"`
+	Count     int                    `json:"count"`
+	Rooms     []RoomResponse         `json:"rooms"`
 }
 
 type HealthResponse struct {
@@ -75,7 +77,6 @@ type HealthResponse struct {
 
 type RoomsQuery struct {
 	Building    *string `form:"building"`
-	Floor       *int    `form:"floor"`
 	Type        *string `form:"type"`
 	Status      *string `form:"status"`
 	CapacityMin *int    `form:"capacity_min"`

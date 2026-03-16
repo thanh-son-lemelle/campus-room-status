@@ -2,22 +2,17 @@ package app
 
 import (
 	"github.com/gin-gonic/gin"
-
-	"campus-room-status/internal/buildings"
-	"campus-room-status/internal/health"
-	"campus-room-status/internal/rooms"
 )
 
+// NewRouter godoc
+// @Summary Get Swagger specification
+// @Tags docs
+// @Produce json
+// @Success 200 {string} string "Swagger JSON document"
+// @Router /api/v1/docs/openapi.json [get]
 func NewRouter() *gin.Engine {
-	r := gin.New()
-	r.Use(gin.Logger(), gin.Recovery())
-
-	api := r.Group("/api/v1")
-	api.GET("/buildings", buildings.Handler)
-	api.GET("/health", health.Handler)
-	api.GET("/rooms", rooms.ListHandler)
-	api.GET("/rooms/:code", rooms.DetailHandler)
-	api.GET("/rooms/:code/schedule", rooms.ScheduleHandler)
-
+	r := newRouterEngine()
+	deps := bootstrapRouterDependencies()
+	registerAPIRoutes(r, deps)
 	return r
 }
