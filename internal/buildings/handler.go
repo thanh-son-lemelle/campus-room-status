@@ -45,11 +45,7 @@ func (h *handler) handle(c *gin.Context) {
 
 	buildings, err := h.service.ListBuildings(c.Request.Context())
 	if err != nil {
-		api.WriteError(c, api.NewHTTPError(
-			http.StatusServiceUnavailable,
-			api.ErrorCodeServiceUnavailable,
-			"Service Google indisponible",
-		))
+		api.WriteError(c, err)
 		return
 	}
 

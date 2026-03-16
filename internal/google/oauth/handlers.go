@@ -90,7 +90,7 @@ func NewCallbackHandlerWithHook(flow *AuthorizationFlow, onConnected func(contex
 			api.WriteError(c, api.NewHTTPError(
 				http.StatusBadRequest,
 				api.ErrorCodeGoogleServiceUnavailable,
-				"Echec consentement Google: "+err.Error(),
+				"Echec consentement Google",
 			))
 			return
 		}

@@ -10,26 +10,7 @@ func FilterAndSortRooms(rooms []Room, filters RoomFilters) ([]Room, error) {
 		return nil, err
 	}
 
-	filtered := make([]Room, 0, len(rooms))
-	for _, room := range rooms {
-		if filters.Building != nil && room.Building != *filters.Building {
-			continue
-		}
-		if filters.Type != nil && room.Type != *filters.Type {
-			continue
-		}
-		if filters.Status != nil && room.Status != *filters.Status {
-			continue
-		}
-		if filters.CapacityMin != nil && room.Capacity < *filters.CapacityMin {
-			continue
-		}
-		if filters.CapacityMax != nil && room.Capacity > *filters.CapacityMax {
-			continue
-		}
-
-		filtered = append(filtered, cloneRoom(room))
-	}
+	filtered := filterRooms(rooms, filters, true)
 
 	sortField := normalizedStringPointer(filters.Sort)
 	if sortField != "" {
@@ -77,6 +58,16 @@ func FilterAndSortRooms(rooms []Room, filters RoomFilters) ([]Room, error) {
 	return filtered, nil
 }
 
+// PrefilterRooms applies non-status filters only and keeps input ordering.
+// It is useful before expensive status enrichment.
+func PrefilterRooms(rooms []Room, filters RoomFilters) ([]Room, error) {
+	if err := ValidateRoomFilters(filters); err != nil {
+		return nil, err
+	}
+
+	return filterRooms(rooms, filters, false), nil
+}
+
 func ValidateRoomFilters(filters RoomFilters) error {
 	status := normalizedStringPointer(filters.Status)
 	if status != "" &&
@@ -119,6 +110,35 @@ func normalizedStringPointer(value *string) string {
 		return ""
 	}
 	return strings.ToLower(strings.TrimSpace(*value))
+}
+
+func filterRooms(rooms []Room, filters RoomFilters, includeStatus bool) []Room {
+	filtered := make([]Room, 0, len(rooms))
+
+	for _, room := range rooms {
+		if filters.Building != nil && room.Building != *filters.Building {
+			continue
+		}
+		if filters.Floor != nil && room.Floor != *filters.Floor {
+			continue
+		}
+		if filters.Type != nil && room.Type != *filters.Type {
+			continue
+		}
+		if includeStatus && filters.Status != nil && room.Status != *filters.Status {
+			continue
+		}
+		if filters.CapacityMin != nil && room.Capacity < *filters.CapacityMin {
+			continue
+		}
+		if filters.CapacityMax != nil && room.Capacity > *filters.CapacityMax {
+			continue
+		}
+
+		filtered = append(filtered, cloneRoom(room))
+	}
+
+	return filtered
 }
 
 func cloneRoom(room Room) Room {

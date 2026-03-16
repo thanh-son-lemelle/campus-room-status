@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type InvalidParameterError struct {
 	Parameter string
@@ -27,14 +30,38 @@ func (e *RoomNotFoundError) Error() string {
 	return fmt.Sprintf("room %s not found", e.RoomCode)
 }
 
+type UnavailableProvider string
+
+const (
+	UnavailableProviderUnknown UnavailableProvider = ""
+	UnavailableProviderGoogle  UnavailableProvider = "google"
+)
+
 type ServiceUnavailableError struct {
-	Service string
+	Provider UnavailableProvider
 }
 
 func (e *ServiceUnavailableError) Error() string {
-	if e == nil || e.Service == "" {
+	if e == nil || e.Provider == UnavailableProviderUnknown {
 		return "service unavailable"
 	}
 
-	return fmt.Sprintf("%s service unavailable", e.Service)
+	return fmt.Sprintf("%s service unavailable", e.Provider)
+}
+
+func NewServiceUnavailableError(provider UnavailableProvider) *ServiceUnavailableError {
+	return &ServiceUnavailableError{Provider: provider}
+}
+
+func IsServiceUnavailableFromProvider(err error, provider UnavailableProvider) bool {
+	if provider == UnavailableProviderUnknown {
+		return false
+	}
+
+	var unavailableErr *ServiceUnavailableError
+	if !errors.As(err, &unavailableErr) {
+		return false
+	}
+
+	return unavailableErr.Provider == provider
 }

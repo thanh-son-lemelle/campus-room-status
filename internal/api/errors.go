@@ -90,7 +90,7 @@ func mapError(err error) (int, ErrorEnvelope) {
 
 	var serviceUnavailableErr *domain.ServiceUnavailableError
 	if errors.As(err, &serviceUnavailableErr) {
-		if strings.EqualFold(serviceUnavailableErr.Service, "google") {
+		if domain.IsServiceUnavailableFromProvider(err, domain.UnavailableProviderGoogle) {
 			return http.StatusServiceUnavailable, errorEnvelope(ErrorCodeGoogleServiceUnavailable, "Service Google indisponible")
 		}
 		return http.StatusServiceUnavailable, errorEnvelope(ErrorCodeServiceUnavailable, "Service indisponible")

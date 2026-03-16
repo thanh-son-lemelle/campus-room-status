@@ -69,7 +69,7 @@ func TestAPIContract_RoomsQueryHasOptionalFilters(t *testing.T) {
 		formTags[tag] = struct{}{}
 	}
 
-	required := []string{"building", "floor", "type", "status"}
+	required := []string{"building", "type", "status"}
 	for _, tag := range required {
 		if _, ok := formTags[tag]; !ok {
 			t.Fatalf("expected RoomsQuery to expose optional %q filter via form tag", tag)

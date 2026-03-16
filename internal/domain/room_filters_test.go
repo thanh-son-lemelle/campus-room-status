@@ -47,6 +47,45 @@ func TestFilterAndSortRooms_FilterByType(t *testing.T) {
 	}
 }
 
+func TestFilterAndSortRooms_FilterByFloor(t *testing.T) {
+	rooms := testRoomsForFilterSort()
+
+	result, err := FilterAndSortRooms(rooms, RoomFilters{
+		Floor: intRef(2),
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(result) != 1 {
+		t.Fatalf("expected 1 room for floor 2, got %d", len(result))
+	}
+	if result[0].Floor != 2 {
+		t.Fatalf("expected room floor 2, got %d", result[0].Floor)
+	}
+}
+
+func TestPrefilterRooms_IgnoresStatusButAppliesStaticFilters(t *testing.T) {
+	rooms := testRoomsForFilterSort()
+
+	result, err := PrefilterRooms(rooms, RoomFilters{
+		Building: stringRef("B1"),
+		Status:   stringRef("occupied"),
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(result) != 2 {
+		t.Fatalf("expected status to be ignored during prefilter and keep 2 B1 rooms, got %d", len(result))
+	}
+	for _, room := range result {
+		if room.Building != "B1" {
+			t.Fatalf("expected room building B1, got %q", room.Building)
+		}
+	}
+}
+
 func TestFilterAndSortRooms_FilterByStatus(t *testing.T) {
 	rooms := testRoomsForFilterSort()
 
