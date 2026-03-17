@@ -222,6 +222,146 @@ func TestRoomEventsCache_FallsBackToStaleWhenCalendarUnavailable(t *testing.T) {
 	}
 }
 
+func TestRoomEventsCache_SplitsLargeRangesIntoAlignedChunks(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 16, 0, 0, 0, time.UTC)
+	ttl := 5 * time.Minute
+	clock := &eventsCacheFakeClock{now: now}
+	calendar := &eventsFakeCalendarClient{
+		responses: [][]Event{
+			eventsFixture("Chunk-1"),
+			eventsFixture("Chunk-2"),
+			eventsFixture("Chunk-3"),
+		},
+	}
+
+	cache, err := NewRoomEventsCache(calendar, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	start := windowStartForTime(now, defaultRoomEventsChunkWindow)
+	key := RoomEventsKey{
+		RoomEmail: "amphi-a@example.org",
+		Start:     start,
+		End:       start.Add(75 * 24 * time.Hour),
+	}
+
+	events, err := cache.Get(context.Background(), key)
+	if err != nil {
+		t.Fatalf("expected large range to load successfully, got %v", err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("expected merged events from 3 chunk calls, got %d", len(events))
+	}
+
+	requests := calendar.Requests()
+	if len(requests) != 3 {
+		t.Fatalf("expected 3 aligned chunk calls, got %d", len(requests))
+	}
+
+	for i, req := range requests {
+		expectedStart := start.Add(time.Duration(i) * defaultRoomEventsChunkWindow)
+		expectedEnd := expectedStart.Add(defaultRoomEventsChunkWindow)
+		if !req.Start.Equal(expectedStart) || !req.End.Equal(expectedEnd) {
+			t.Fatalf(
+				"expected request %d to be [%s, %s), got [%s, %s)",
+				i,
+				expectedStart,
+				expectedEnd,
+				req.Start,
+				req.End,
+			)
+		}
+	}
+}
+
+func TestRoomEventsCache_ReusesChunksAcrossOverlappingRanges(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 16, 0, 0, 0, time.UTC)
+	ttl := 5 * time.Minute
+	clock := &eventsCacheFakeClock{now: now}
+	calendar := &eventsFakeCalendarClient{
+		responses: [][]Event{
+			eventsFixture("Chunk-1"),
+			eventsFixture("Chunk-2"),
+		},
+	}
+
+	cache, err := NewRoomEventsCache(calendar, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	start := windowStartForTime(now, defaultRoomEventsChunkWindow)
+	rangeA := RoomEventsKey{
+		RoomEmail: "amphi-a@example.org",
+		Start:     start,
+		End:       start.Add(45 * 24 * time.Hour),
+	}
+
+	if _, err := cache.Get(context.Background(), rangeA); err != nil {
+		t.Fatalf("expected first range to load successfully, got %v", err)
+	}
+	if calendar.Calls() != 2 {
+		t.Fatalf("expected two chunk fetches for first range, got %d", calendar.Calls())
+	}
+
+	// Any extra provider call would fail this request.
+	calendar.SetError(errors.New("calendar unavailable"))
+
+	rangeB := RoomEventsKey{
+		RoomEmail: "amphi-a@example.org",
+		Start:     start.Add(10 * 24 * time.Hour),
+		End:       start.Add(40 * 24 * time.Hour),
+	}
+
+	if _, err := cache.Get(context.Background(), rangeB); err != nil {
+		t.Fatalf("expected overlapping range to be served from chunk cache, got %v", err)
+	}
+	if calendar.Calls() != 2 {
+		t.Fatalf("expected no additional provider call for overlapping range, got %d", calendar.Calls())
+	}
+}
+
+func TestRoomEventsCache_DeduplicatesEventsAcrossChunks(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 16, 0, 0, 0, time.UTC)
+	ttl := 5 * time.Minute
+	clock := &eventsCacheFakeClock{now: now}
+	start := windowStartForTime(now, defaultRoomEventsChunkWindow)
+
+	duplicated := Event{
+		Title:     "Cross-chunk event",
+		Start:     start.Add(2 * time.Hour),
+		End:       start.Add(3 * time.Hour),
+		Organizer: "teacher@example.org",
+	}
+
+	calendar := &eventsFakeCalendarClient{
+		responses: [][]Event{
+			{duplicated},
+			{duplicated},
+		},
+	}
+
+	cache, err := NewRoomEventsCache(calendar, ttl, clock)
+	if err != nil {
+		t.Fatalf("expected cache creation to succeed, got error: %v", err)
+	}
+
+	key := RoomEventsKey{
+		RoomEmail: "amphi-a@example.org",
+		Start:     start,
+		End:       start.Add(35 * 24 * time.Hour),
+	}
+
+	events, err := cache.Get(context.Background(), key)
+	if err != nil {
+		t.Fatalf("expected range load to succeed, got %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected duplicated chunk event to be collapsed to one item, got %d", len(events))
+	}
+}
+
 func TestRoomEventsCache_ExposesDegradedStateForHealth(t *testing.T) {
 	now := time.Date(2026, time.March, 10, 17, 0, 0, 0, time.UTC)
 	ttl := time.Minute
@@ -380,13 +520,25 @@ type eventsFakeCalendarClient struct {
 	responses [][]Event
 	err       error
 	calls     int
+	requests  []eventsCalendarRequest
 }
 
-func (c *eventsFakeCalendarClient) ListRoomEvents(context.Context, string, time.Time, time.Time) ([]Event, error) {
+type eventsCalendarRequest struct {
+	RoomEmail string
+	Start     time.Time
+	End       time.Time
+}
+
+func (c *eventsFakeCalendarClient) ListRoomEvents(_ context.Context, roomEmail string, start, end time.Time) ([]Event, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.calls++
+	c.requests = append(c.requests, eventsCalendarRequest{
+		RoomEmail: roomEmail,
+		Start:     start,
+		End:       end,
+	})
 	if c.err != nil {
 		return nil, c.err
 	}
@@ -413,6 +565,15 @@ func (c *eventsFakeCalendarClient) SetError(err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.err = err
+}
+
+func (c *eventsFakeCalendarClient) Requests() []eventsCalendarRequest {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	out := make([]eventsCalendarRequest, len(c.requests))
+	copy(out, c.requests)
+	return out
 }
 
 type eventsBlockingCalendarClient struct {
@@ -444,5 +605,12 @@ func (c *eventsBlockingCalendarClient) Calls() int {
 }
 
 func eventsFixture(title string) []Event {
-	return domainEventsFromMock(mockdata.CacheEvents(title))
+	events := domainEventsFromMock(mockdata.CacheEvents(title))
+	// Keep fixture events broad so range filtering in chunked cache tests
+	// does not accidentally exclude them.
+	for i := range events {
+		events[i].Start = time.Date(2026, time.March, 10, 0, 0, 0, 0, time.UTC)
+		events[i].End = time.Date(2026, time.March, 11, 0, 0, 0, 0, time.UTC)
+	}
+	return events
 }
