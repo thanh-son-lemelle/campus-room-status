@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"golang.org/x/sync/singleflight"
 )
+
+const defaultRoomEventsChunkWindow = 30 * 24 * time.Hour
 
 type RoomEventsKey struct {
 	RoomEmail string
@@ -31,9 +34,10 @@ type RoomEventsCacheHealthState struct {
 }
 
 type RoomEventsCache struct {
-	calendar CalendarClient
-	ttl      time.Duration
-	clock    Clock
+	calendar    CalendarClient
+	ttl         time.Duration
+	clock       Clock
+	chunkWindow time.Duration
 
 	mu                      sync.RWMutex
 	entries                 map[string]roomEventsCacheEntry
@@ -75,10 +79,11 @@ func NewRoomEventsCache(calendar CalendarClient, ttl time.Duration, clock Clock)
 	}
 
 	return &RoomEventsCache{
-		calendar: calendar,
-		ttl:      ttl,
-		clock:    clock,
-		entries:  make(map[string]roomEventsCacheEntry),
+		calendar:    calendar,
+		ttl:         ttl,
+		clock:       clock,
+		chunkWindow: defaultRoomEventsChunkWindow,
+		entries:     make(map[string]roomEventsCacheEntry),
 	}, nil
 }
 
@@ -95,6 +100,77 @@ func NewRoomEventsCache(calendar CalendarClient, ttl time.Duration, clock Clock)
 // - value1 ([]Event): Returned value.
 // - value2 (error): Returned value.
 func (c *RoomEventsCache) Get(ctx context.Context, key RoomEventsKey) ([]Event, error) {
+	_, normalizedKey, err := mapKeyFromRoomEventsKey(key)
+	if err != nil {
+		return nil, err
+	}
+
+	chunks := splitRoomEventsKeyIntoChunks(normalizedKey, c.chunkWindow)
+	events := make([]Event, 0)
+	for _, chunkKey := range chunks {
+		chunkEvents, fetchErr := c.getChunk(ctx, chunkKey)
+		if fetchErr != nil {
+			return nil, fetchErr
+		}
+		events = append(events, chunkEvents...)
+	}
+
+	return normalizeEventsForRange(events, normalizedKey.Start, normalizedKey.End), nil
+}
+
+// Metadata metadatas function behavior.
+//
+// Summary:
+// - Metadatas function behavior.
+//
+// Attributes:
+// - key (RoomEventsKey): Input parameter.
+//
+// Returns:
+// - value1 (RoomEventsCacheMetadata): Returned value.
+func (c *RoomEventsCache) Metadata(key RoomEventsKey) RoomEventsCacheMetadata {
+	_, normalizedKey, err := mapKeyFromRoomEventsKey(key)
+	if err != nil {
+		return RoomEventsCacheMetadata{}
+	}
+	chunks := splitRoomEventsKeyIntoChunks(normalizedKey, c.chunkWindow)
+	if len(chunks) == 0 {
+		return RoomEventsCacheMetadata{}
+	}
+
+	now := c.clock.Now()
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	metadata := RoomEventsCacheMetadata{HasData: true}
+	for i, chunk := range chunks {
+		mapKey, _, mapErr := mapKeyFromRoomEventsKey(chunk)
+		if mapErr != nil {
+			return RoomEventsCacheMetadata{}
+		}
+
+		entry, ok := c.entries[mapKey]
+		if !ok || !entry.hasData {
+			return RoomEventsCacheMetadata{}
+		}
+
+		if !now.Before(entry.expiresAt) {
+			metadata.Stale = true
+		}
+		if i == 0 || entry.expiresAt.Before(metadata.ExpiresAt) {
+			metadata.ExpiresAt = entry.expiresAt
+		}
+		if entry.lastRefresh.After(metadata.LastRefresh) {
+			metadata.LastRefresh = entry.lastRefresh
+		}
+	}
+
+	return metadata
+}
+
+// getChunk gets a chunked key from cache or provider.
+func (c *RoomEventsCache) getChunk(ctx context.Context, key RoomEventsKey) ([]Event, error) {
 	mapKey, normalizedKey, err := mapKeyFromRoomEventsKey(key)
 	if err != nil {
 		return nil, err
@@ -124,40 +200,6 @@ func (c *RoomEventsCache) Get(ctx context.Context, key RoomEventsKey) ([]Event, 
 	}
 
 	return cloneEvents(events), nil
-}
-
-// Metadata metadatas function behavior.
-//
-// Summary:
-// - Metadatas function behavior.
-//
-// Attributes:
-// - key (RoomEventsKey): Input parameter.
-//
-// Returns:
-// - value1 (RoomEventsCacheMetadata): Returned value.
-func (c *RoomEventsCache) Metadata(key RoomEventsKey) RoomEventsCacheMetadata {
-	mapKey, _, err := mapKeyFromRoomEventsKey(key)
-	if err != nil {
-		return RoomEventsCacheMetadata{}
-	}
-
-	now := c.clock.Now()
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	entry, ok := c.entries[mapKey]
-	if !ok || !entry.hasData {
-		return RoomEventsCacheMetadata{}
-	}
-
-	return RoomEventsCacheMetadata{
-		HasData:     true,
-		Stale:       !now.Before(entry.expiresAt),
-		ExpiresAt:   entry.expiresAt,
-		LastRefresh: entry.lastRefresh,
-	}
 }
 
 // HealthState healths state.
@@ -300,6 +342,53 @@ func mapKeyFromRoomEventsKey(key RoomEventsKey) (string, RoomEventsKey, error) {
 	return cacheKey, normalized, nil
 }
 
+// splitRoomEventsKeyIntoChunks splits a key into globally aligned chunks.
+func splitRoomEventsKeyIntoChunks(key RoomEventsKey, chunkWindow time.Duration) []RoomEventsKey {
+	if !key.End.After(key.Start) {
+		return nil
+	}
+	if chunkWindow <= 0 {
+		return []RoomEventsKey{key}
+	}
+
+	chunkStart := windowStartForTime(key.Start, chunkWindow)
+	chunks := make([]RoomEventsKey, 0, int(key.End.Sub(chunkStart)/chunkWindow)+1)
+
+	for chunkStart.Before(key.End) {
+		chunkEnd := chunkStart.Add(chunkWindow)
+		if !chunkEnd.After(chunkStart) {
+			break
+		}
+
+		chunks = append(chunks, RoomEventsKey{
+			RoomEmail: key.RoomEmail,
+			Start:     chunkStart,
+			End:       chunkEnd,
+		})
+
+		chunkStart = chunkEnd
+	}
+
+	return chunks
+}
+
+// windowStartForTime returns the aligned window start for the given timestamp.
+func windowStartForTime(value time.Time, window time.Duration) time.Time {
+	if window <= 0 {
+		return value.UTC()
+	}
+
+	utc := value.UTC()
+	windowNS := int64(window)
+	valueNS := utc.UnixNano()
+	remainder := valueNS % windowNS
+	if remainder < 0 {
+		remainder += windowNS
+	}
+
+	return time.Unix(0, valueNS-remainder).UTC()
+}
+
 // normalizeRoomEventsKey normalizes room events key.
 //
 // Summary:
@@ -328,6 +417,57 @@ func normalizeRoomEventsKey(key RoomEventsKey) (RoomEventsKey, error) {
 		Start:     start,
 		End:       end,
 	}, nil
+}
+
+// normalizeEventsForRange filters, deduplicates and sorts events for a requested range.
+func normalizeEventsForRange(events []Event, start, end time.Time) []Event {
+	if len(events) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(events))
+	out := make([]Event, 0, len(events))
+	for _, event := range events {
+		if !event.End.After(start) || !event.Start.Before(end) {
+			continue
+		}
+
+		fingerprint := eventFingerprint(event)
+		if _, exists := seen[fingerprint]; exists {
+			continue
+		}
+		seen[fingerprint] = struct{}{}
+		out = append(out, event)
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Start.Equal(out[j].Start) {
+			if out[i].End.Equal(out[j].End) {
+				if out[i].Title == out[j].Title {
+					return out[i].Organizer < out[j].Organizer
+				}
+				return out[i].Title < out[j].Title
+			}
+			return out[i].End.Before(out[j].End)
+		}
+		return out[i].Start.Before(out[j].Start)
+	})
+
+	return out
+}
+
+func eventFingerprint(event Event) string {
+	return fmt.Sprintf(
+		"%s|%d|%d|%s",
+		event.Title,
+		event.Start.UTC().UnixNano(),
+		event.End.UTC().UnixNano(),
+		event.Organizer,
+	)
 }
 
 // cloneEvents clones events.
