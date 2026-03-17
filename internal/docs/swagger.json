@@ -458,9 +458,6 @@
                 "next_event": {
                     "$ref": "#/definitions/api.EventResponse"
                 },
-                "resource_email": {
-                    "type": "string"
-                },
                 "schedule_today": {
                     "type": "array",
                     "items": {
@@ -498,9 +495,6 @@
                 },
                 "next_event": {
                     "$ref": "#/definitions/api.EventResponse"
-                },
-                "resource_email": {
-                    "type": "string"
                 },
                 "status": {
                     "type": "string"

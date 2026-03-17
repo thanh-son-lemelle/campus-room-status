@@ -22,21 +22,19 @@ type EventResponse struct {
 }
 
 type RoomResponse struct {
-	Code          string         `json:"code"`
-	ResourceEmail string         `json:"resource_email,omitempty"`
-	Name          string         `json:"name"`
-	Building      string         `json:"building"`
-	Floor         int            `json:"floor"`
-	Capacity      int            `json:"capacity"`
-	Type          string         `json:"type"`
-	Status        string         `json:"status"`
-	CurrentEvent  *EventResponse `json:"current_event"`
-	NextEvent     *EventResponse `json:"next_event"`
+	Code         string         `json:"code"`
+	Name         string         `json:"name"`
+	Building     string         `json:"building"`
+	Floor        int            `json:"floor"`
+	Capacity     int            `json:"capacity"`
+	Type         string         `json:"type"`
+	Status       string         `json:"status"`
+	CurrentEvent *EventResponse `json:"current_event"`
+	NextEvent    *EventResponse `json:"next_event"`
 }
 
 type RoomDetailResponse struct {
 	Code          string          `json:"code"`
-	ResourceEmail string          `json:"resource_email,omitempty"`
 	Name          string          `json:"name"`
 	Building      string          `json:"building"`
 	Floor         int             `json:"floor"`

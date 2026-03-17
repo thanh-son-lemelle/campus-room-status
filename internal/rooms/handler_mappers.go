@@ -17,16 +17,15 @@ import (
 // - value1 (api.RoomResponse): Returned value.
 func domainRoomToAPIRoom(room domain.Room) api.RoomResponse {
 	return api.RoomResponse{
-		Code:          room.Code,
-		ResourceEmail: room.ResourceEmail,
-		Name:          room.Name,
-		Building:      room.Building,
-		Floor:         room.Floor,
-		Capacity:      room.Capacity,
-		Type:          room.Type,
-		Status:        room.Status,
-		CurrentEvent:  domainEventToAPIEvent(room.CurrentEvent),
-		NextEvent:     domainEventToAPIEvent(room.NextEvent),
+		Code:         room.Code,
+		Name:         room.Name,
+		Building:     room.Building,
+		Floor:        room.Floor,
+		Capacity:     room.Capacity,
+		Type:         room.Type,
+		Status:       room.Status,
+		CurrentEvent: domainEventToAPIEvent(room.CurrentEvent),
+		NextEvent:    domainEventToAPIEvent(room.NextEvent),
 	}
 }
 

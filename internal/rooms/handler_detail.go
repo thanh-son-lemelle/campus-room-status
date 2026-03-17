@@ -55,7 +55,6 @@ func (h *detailHandler) handle(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.RoomDetailResponse{
 		Code:          room.Code,
-		ResourceEmail: room.ResourceEmail,
 		Name:          room.Name,
 		Building:      room.Building,
 		Floor:         room.Floor,
